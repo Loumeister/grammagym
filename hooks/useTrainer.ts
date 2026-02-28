@@ -1,0 +1,584 @@
+import { useState, useEffect } from 'react';
+import { SENTENCES, ROLES, FEEDBACK_MATRIX, FEEDBACK_STRUCTURE, HINTS } from '../constants';
+import { Sentence, PlacementMap, RoleKey, Token, DifficultyLevel, ValidationState } from '../types';
+
+export type AppStep = 'split' | 'label';
+export type Mode = 'free' | 'session';
+export type PredicateMode = 'ALL' | 'WG' | 'NG';
+
+export interface ChunkData {
+  tokens: Token[];
+  originalIndices: number[];
+}
+
+export interface ValidationResult {
+  score: number;
+  total: number;
+  chunkStatus: Record<number, ValidationState>;
+  chunkFeedback: Record<number, string>;
+  isPerfect: boolean;
+}
+
+export interface TrainerState {
+  // Config
+  predicateMode: PredicateMode;
+  setPredicateMode: (mode: PredicateMode) => void;
+  selectedLevel: DifficultyLevel | null;
+  setSelectedLevel: (level: DifficultyLevel | null) => void;
+  customSessionCount: number;
+  setCustomSessionCount: (count: number) => void;
+
+  // Focus filters
+  focusLV: boolean;
+  setFocusLV: (v: boolean) => void;
+  focusMV: boolean;
+  setFocusMV: (v: boolean) => void;
+  focusVV: boolean;
+  setFocusVV: (v: boolean) => void;
+  focusBijzin: boolean;
+  setFocusBijzin: (v: boolean) => void;
+
+  // Complexity filters
+  includeBijst: boolean;
+  setIncludeBijst: (v: boolean) => void;
+  includeBB: boolean;
+  setIncludeBB: (v: boolean) => void;
+  includeVV: boolean;
+
+  // Session
+  mode: Mode;
+  sessionQueue: Sentence[];
+  sessionIndex: number;
+  sessionStats: { correct: number; total: number };
+  mistakeStats: Record<string, number>;
+  isSessionFinished: boolean;
+
+  // Trainer
+  currentSentence: Sentence | null;
+  step: AppStep;
+  splitIndices: Set<number>;
+  chunkLabels: PlacementMap;
+  subLabels: PlacementMap;
+  validationResult: ValidationResult | null;
+  showAnswerMode: boolean;
+  hintMessage: string | null;
+  confirmAction: 'answer' | 'abort' | null;
+  setConfirmAction: (action: 'answer' | 'abort' | null) => void;
+
+  // UI
+  showHelp: boolean;
+  setShowHelp: (v: boolean) => void;
+  darkMode: boolean;
+  setDarkMode: (v: boolean) => void;
+  largeFont: boolean;
+  setLargeFont: (v: boolean) => void;
+
+  // Derived
+  userChunks: ChunkData[];
+  availableSentences: Sentence[];
+
+  // Actions
+  startSession: () => void;
+  nextSessionSentence: () => void;
+  handleSentenceSelect: (sentenceId: number) => void;
+  toggleSplit: (tokenIndex: number) => void;
+  handleNextStep: () => void;
+  handleBackStep: () => void;
+  handleDragStart: (e: React.DragEvent<HTMLDivElement>, roleKey: string) => void;
+  handleDropChunk: (e: React.DragEvent<HTMLDivElement>, chunkId: string) => void;
+  handleDropWord: (e: React.DragEvent<HTMLSpanElement>, tokenId: string) => void;
+  removeLabel: (chunkId: string) => void;
+  removeSubLabel: (tokenId: string) => void;
+  handleHint: () => void;
+  handleCheck: () => void;
+  handleShowAnswerRequest: () => void;
+  handleAbortRequest: () => void;
+  handleConfirmAction: () => void;
+  resetToHome: () => void;
+}
+
+export function useTrainer(): TrainerState {
+  const [mode, setMode] = useState<Mode>('free');
+
+  // Configuration State
+  const [predicateMode, setPredicateMode] = useState<PredicateMode>('ALL');
+
+  // Focus Filters
+  const [focusLV, setFocusLV] = useState(false);
+  const [focusMV, setFocusMV] = useState(false);
+  const [focusVV, setFocusVV] = useState(false);
+  const [focusBijzin, setFocusBijzin] = useState(false);
+
+  // Complexity Filters
+  const [includeBijst, setIncludeBijst] = useState(false);
+  const [includeBB, setIncludeBB] = useState(false);
+  const [includeVV] = useState(false);
+
+  // Level & Count
+  const [selectedLevel, setSelectedLevel] = useState<DifficultyLevel | null>(null);
+  const [customSessionCount, setCustomSessionCount] = useState<number>(10);
+
+  // Session State
+  const [sessionQueue, setSessionQueue] = useState<Sentence[]>([]);
+  const [sessionIndex, setSessionIndex] = useState(0);
+  const [sessionStats, setSessionStats] = useState({ correct: 0, total: 0 });
+  const [mistakeStats, setMistakeStats] = useState<Record<string, number>>({});
+  const [isSessionFinished, setIsSessionFinished] = useState(false);
+
+  // Current Sentence State
+  const [currentSentence, setCurrentSentence] = useState<Sentence | null>(null);
+  const [step, setStep] = useState<AppStep>('split');
+
+  // UI State
+  const [showHelp, setShowHelp] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  const [largeFont, setLargeFont] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'answer' | 'abort' | null>(null);
+
+  // Splitting State
+  const [splitIndices, setSplitIndices] = useState<Set<number>>(new Set());
+
+  // Labeling State
+  const [chunkLabels, setChunkLabels] = useState<PlacementMap>({});
+  const [subLabels, setSubLabels] = useState<PlacementMap>({});
+
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [showAnswerMode, setShowAnswerMode] = useState(false);
+  const [hintMessage, setHintMessage] = useState<string | null>(null);
+
+  // --- Effects ---
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
+
+  // --- Logic ---
+
+  const getFilteredSentences = (): Sentence[] => {
+    return SENTENCES.filter(s => {
+      const isCompound = s.level === 4;
+      if (isCompound && !focusBijzin) return false;
+
+      if (predicateMode === 'WG' && s.predicateType !== 'WG') return false;
+      if (predicateMode === 'NG' && s.predicateType !== 'NG') return false;
+
+      const specificFocusActive = focusLV || focusMV || focusVV;
+
+      if (specificFocusActive) {
+        const matchesFocus = (
+            (focusLV && s.tokens.some(t => t.role === 'lv')) ||
+            (focusMV && s.tokens.some(t => t.role === 'mv')) ||
+            (focusVV && s.tokens.some(t => t.role === 'vv')) ||
+            (focusBijzin && isCompound)
+        );
+        if (!matchesFocus) return false;
+      } else if (focusBijzin) {
+         if (!isCompound) return false;
+      }
+
+      const isLevelHighOrAll = selectedLevel === 3 || selectedLevel === null;
+      const isLevelLow = selectedLevel === 1;
+
+      if (!isCompound && !isLevelHighOrAll && !includeBijst && s.tokens.some(t => t.role === 'bijst')) {
+          return false;
+      }
+
+      if (!isCompound && isLevelLow && !includeVV && !focusVV && s.tokens.some(t => t.role === 'vv')) {
+          return false;
+      }
+
+      if (selectedLevel !== null) {
+          if (s.level !== selectedLevel) return false;
+      }
+
+      return true;
+    });
+  };
+
+  const loadSentence = (sentence: Sentence) => {
+    setCurrentSentence(sentence);
+    setStep('split');
+    setSplitIndices(new Set());
+    setChunkLabels({});
+    setSubLabels({});
+    setValidationResult(null);
+    setShowAnswerMode(false);
+    setHintMessage(null);
+    setConfirmAction(null);
+  };
+
+  const startSession = () => {
+    const pool = getFilteredSentences();
+    if (pool.length === 0) {
+      alert("Geen zinnen beschikbaar met de huidige filters.");
+      return;
+    }
+    const shuffled = [...pool].sort(() => 0.5 - Math.random());
+    const count = Math.min(Math.max(1, customSessionCount), shuffled.length);
+    const selected = shuffled.slice(0, count);
+
+    setSessionQueue(selected);
+    setSessionIndex(0);
+    setSessionStats({ correct: 0, total: 0 });
+    setMistakeStats({});
+    setIsSessionFinished(false);
+    setMode('session');
+    loadSentence(selected[0]);
+  };
+
+  const nextSessionSentence = () => {
+    const nextIndex = sessionIndex + 1;
+    if (nextIndex < sessionQueue.length) {
+      setSessionIndex(nextIndex);
+      loadSentence(sessionQueue[nextIndex]);
+    } else {
+      setIsSessionFinished(true);
+      setCurrentSentence(null);
+    }
+  };
+
+  const handleSentenceSelect = (sentenceId: number) => {
+    if (sentenceId === -1) {
+        setCurrentSentence(null);
+        return;
+    }
+    const selected = SENTENCES.find(s => s.id === sentenceId);
+    if (selected) {
+      setMode('free');
+      loadSentence(selected);
+    }
+  };
+
+  const toggleSplit = (tokenIndex: number) => {
+    if (showAnswerMode) return;
+    if (validationResult) setValidationResult(null);
+    setHintMessage(null);
+
+    const newSplits = new Set(splitIndices);
+    if (newSplits.has(tokenIndex)) {
+      newSplits.delete(tokenIndex);
+    } else {
+      newSplits.add(tokenIndex);
+    }
+    setSplitIndices(newSplits);
+  };
+
+  const handleNextStep = () => {
+    setStep('label');
+    setValidationResult(null);
+    setHintMessage(null);
+  };
+
+  const handleBackStep = () => {
+    setStep('split');
+    setValidationResult(null);
+    setHintMessage(null);
+  };
+
+  const getUserChunks = (): ChunkData[] => {
+    if (!currentSentence) return [];
+    const chunks: ChunkData[] = [];
+    let currentChunkTokens: Token[] = [];
+    let currentChunkIndices: number[] = [];
+
+    currentSentence.tokens.forEach((token, index) => {
+      currentChunkTokens.push(token);
+      currentChunkIndices.push(index);
+
+      if (splitIndices.has(index) || index === currentSentence.tokens.length - 1) {
+        chunks.push({
+          tokens: currentChunkTokens,
+          originalIndices: currentChunkIndices
+        });
+        currentChunkTokens = [];
+        currentChunkIndices = [];
+      }
+    });
+    return chunks;
+  };
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, roleKey: string) => {
+    e.dataTransfer.setData("text/role", roleKey);
+    e.dataTransfer.effectAllowed = "copy";
+  };
+
+  const handleDropChunk = (e: React.DragEvent<HTMLDivElement>, chunkId: string) => {
+    e.preventDefault();
+    if (showAnswerMode) return;
+    const roleKey = e.dataTransfer.getData("text/role") as RoleKey;
+    if (roleKey) {
+      setChunkLabels(prev => ({ ...prev, [chunkId]: roleKey }));
+      setValidationResult(null);
+      setHintMessage(null);
+    }
+  };
+
+  const handleDropWord = (e: React.DragEvent<HTMLSpanElement>, tokenId: string) => {
+    e.preventDefault();
+    if (showAnswerMode) return;
+    const roleKey = e.dataTransfer.getData("text/role") as RoleKey;
+    if (roleKey) {
+      setSubLabels(prev => ({ ...prev, [tokenId]: roleKey }));
+      setValidationResult(null);
+      setHintMessage(null);
+    }
+  };
+
+  const removeLabel = (chunkId: string) => {
+    if (showAnswerMode) return;
+    const newLabels = { ...chunkLabels };
+    delete newLabels[chunkId];
+    setChunkLabels(newLabels);
+    setValidationResult(null);
+    setHintMessage(null);
+  };
+
+  const removeSubLabel = (tokenId: string) => {
+    if (showAnswerMode) return;
+    const newLabels = { ...subLabels };
+    delete newLabels[tokenId];
+    setSubLabels(newLabels);
+    setValidationResult(null);
+    setHintMessage(null);
+  };
+
+  const handleHint = () => {
+    if (!currentSentence) return;
+
+    const usedRoles = Object.values(chunkLabels);
+    if (!usedRoles.includes('pv')) { setHintMessage(HINTS.MISSING_PV); return; }
+    if (!usedRoles.includes('ow')) { setHintMessage(HINTS.MISSING_OW); return; }
+
+    const actualRolesInSentence = new Set<RoleKey>();
+    currentSentence.tokens.forEach(t => {
+        actualRolesInSentence.add(t.role);
+    });
+
+    if (actualRolesInSentence.has('wg') && !usedRoles.includes('wg')) { setHintMessage(HINTS.MISSING_WG); return; }
+    if (actualRolesInSentence.has('nwd') && !usedRoles.includes('nwd')) { setHintMessage(HINTS.MISSING_NG); return; }
+    if (actualRolesInSentence.has('lv') && !usedRoles.includes('lv')) { setHintMessage(HINTS.MISSING_LV); return; }
+
+    const remainingMissing = Array.from(actualRolesInSentence).find(r => !usedRoles.includes(r));
+    if (remainingMissing) {
+        const roleDef = ROLES.find(r => r.key === remainingMissing);
+        if (roleDef) { setHintMessage(HINTS.generic(roleDef.label)); }
+    } else {
+        setHintMessage("Je hebt alle labels gebruikt. Controleer of ze op de juiste plek staan!");
+    }
+  };
+
+  const handleCheck = () => {
+    if (!currentSentence) return;
+
+    const userChunks = getUserChunks();
+    const chunkStatus: Record<number, ValidationState> = {};
+    const chunkFeedback: Record<number, string> = {};
+    let correctChunksCount = 0;
+    const currentMistakes: Record<string, number> = {};
+
+    userChunks.forEach((chunk, idx) => {
+      const chunkTokens = chunk.tokens;
+      const firstTokenId = chunkTokens[0].id;
+      const firstTokenRole = chunkTokens[0].role;
+      const missedInternalSplit = chunkTokens.slice(1).some(t => t.newChunk);
+      const isConsistentRole = chunkTokens.every(t => t.role === firstTokenRole);
+      const lastTokenId = chunkTokens[chunkTokens.length - 1].id;
+      const lastTokenIndex = currentSentence.tokens.findIndex(t => t.id === lastTokenId);
+      const nextToken = currentSentence.tokens[lastTokenIndex + 1];
+      const splitTooEarly = nextToken && nextToken.role === firstTokenRole && !nextToken.newChunk;
+      const firstTokenIndexInSent = currentSentence.tokens.findIndex(t => t.id === firstTokenId);
+      const prevToken = currentSentence.tokens[firstTokenIndexInSent - 1];
+      const startedTooLate = prevToken && prevToken.role === firstTokenRole && !chunkTokens[0].newChunk;
+      const isValidSplit = isConsistentRole && !splitTooEarly && !startedTooLate && !missedInternalSplit;
+
+      if (!isValidSplit) {
+        chunkStatus[idx] = 'incorrect-split';
+        if (!isConsistentRole || missedInternalSplit) chunkFeedback[idx] = FEEDBACK_STRUCTURE.INCONSISTENT;
+        else if (splitTooEarly || startedTooLate) chunkFeedback[idx] = FEEDBACK_STRUCTURE.TOO_MANY_SPLITS;
+        else chunkFeedback[idx] = "De verdeling klopt niet.";
+      } else {
+        const userLabel = chunkLabels[firstTokenId];
+        if (userLabel === firstTokenRole) {
+          chunkStatus[idx] = 'correct';
+          correctChunksCount++;
+        } else {
+          if (firstTokenRole === 'pv' && userLabel === 'wg') {
+             chunkStatus[idx] = 'warning';
+             chunkFeedback[idx] = FEEDBACK_MATRIX['wg'] && FEEDBACK_MATRIX['wg']['pv'] ? FEEDBACK_MATRIX['wg']['pv'] : "Dit hoort bij het gezegde.";
+          } else {
+             chunkStatus[idx] = 'incorrect-role';
+             if (userLabel && FEEDBACK_MATRIX[userLabel] && FEEDBACK_MATRIX[userLabel][firstTokenRole]) {
+                 chunkFeedback[idx] = FEEDBACK_MATRIX[userLabel][firstTokenRole];
+             } else {
+                 const userRoleName = ROLES.find(r => r.key === userLabel)?.label || "Gekozen";
+                 const correctRoleName = ROLES.find(r => r.key === firstTokenRole)?.label || "Juiste";
+                 chunkFeedback[idx] = `Dit is niet ${userRoleName}, maar het ${correctRoleName}.`;
+             }
+             const roleName = ROLES.find(r => r.key === firstTokenRole)?.label || firstTokenRole;
+             currentMistakes[roleName] = (currentMistakes[roleName] || 0) + 1;
+          }
+        }
+      }
+    });
+
+    let subRoleMismatch = false;
+    currentSentence.tokens.forEach(t => {
+       const userSub = subLabels[t.id];
+       let expectedSub = t.subRole;
+       if (!includeBB && expectedSub === 'bijv_bep') expectedSub = undefined;
+       if (userSub !== expectedSub) subRoleMismatch = true;
+    });
+
+    const isSplitPerfect = correctChunksCount === userChunks.length;
+    let realChunkCount = 0;
+    currentSentence.tokens.forEach((t, i) => {
+        if (i === 0 || t.role !== currentSentence.tokens[i-1].role || t.newChunk) realChunkCount++;
+    });
+    const reallyPerfect = isSplitPerfect && userChunks.length === realChunkCount && !subRoleMismatch;
+
+    setValidationResult({
+      score: correctChunksCount,
+      total: userChunks.length,
+      chunkStatus,
+      chunkFeedback,
+      isPerfect: reallyPerfect
+    });
+
+    if (mode === 'session') {
+        const newTotal = sessionStats.total + realChunkCount;
+        const newCorrect = sessionStats.correct + correctChunksCount;
+        setSessionStats({ correct: newCorrect, total: newTotal });
+        const newMistakeStats = { ...mistakeStats };
+        Object.entries(currentMistakes).forEach(([role, count]) => {
+           newMistakeStats[role] = (newMistakeStats[role] || 0) + count;
+        });
+        setMistakeStats(newMistakeStats);
+    }
+  };
+
+  const handleShowAnswerRequest = () => {
+    setConfirmAction('answer');
+  };
+
+  const handleAbortRequest = () => {
+    if (mode === 'session') {
+      setConfirmAction('abort');
+    } else {
+      resetToHome();
+    }
+  };
+
+  const handleConfirmAction = () => {
+    if (confirmAction === 'answer') {
+        executeShowAnswer();
+    } else if (confirmAction === 'abort') {
+        resetToHome();
+    }
+    setConfirmAction(null);
+  };
+
+  const executeShowAnswer = () => {
+    if (!currentSentence) return;
+    setHintMessage(null);
+    const correctSplits = new Set<number>();
+    currentSentence.tokens.forEach((t, i) => {
+      const next = currentSentence.tokens[i + 1];
+      if (next && (t.role !== next.role || next.newChunk)) correctSplits.add(i);
+    });
+    setSplitIndices(correctSplits);
+    setStep('label');
+
+    const correctChunkLabels: PlacementMap = {};
+    const correctSubLabels: PlacementMap = {};
+    let currentChunkStartId = currentSentence.tokens[0].id;
+    correctChunkLabels[currentChunkStartId] = currentSentence.tokens[0].role;
+
+    currentSentence.tokens.forEach((t, i) => {
+      if (t.subRole) {
+        if (t.subRole === 'bijv_bep' && !includeBB) { /* skip */ }
+        else { correctSubLabels[t.id] = t.subRole; }
+      }
+      if (correctSplits.has(i - 1)) {
+         currentChunkStartId = t.id;
+         correctChunkLabels[currentChunkStartId] = t.role;
+      }
+    });
+
+    if (mode === 'session' && !validationResult) {
+        let realChunkCount = 0;
+        currentSentence.tokens.forEach((t, i) => {
+            if (i === 0 || t.role !== currentSentence.tokens[i-1].role || t.newChunk) realChunkCount++;
+        });
+        setSessionStats(prev => ({ correct: prev.correct, total: prev.total + realChunkCount }));
+    }
+
+    setChunkLabels(correctChunkLabels);
+    setSubLabels(correctSubLabels);
+    setShowAnswerMode(true);
+    setValidationResult(null);
+  };
+
+  const resetToHome = () => {
+    setCurrentSentence(null);
+    setMode('free');
+    setSessionQueue([]);
+    setValidationResult(null);
+    setIsSessionFinished(false);
+    setHintMessage(null);
+    setConfirmAction(null);
+  };
+
+  const userChunks = getUserChunks();
+  const availableSentences = getFilteredSentences();
+
+  return {
+    // Config
+    predicateMode, setPredicateMode,
+    selectedLevel, setSelectedLevel,
+    customSessionCount, setCustomSessionCount,
+
+    // Focus filters
+    focusLV, setFocusLV,
+    focusMV, setFocusMV,
+    focusVV, setFocusVV,
+    focusBijzin, setFocusBijzin,
+
+    // Complexity filters
+    includeBijst, setIncludeBijst,
+    includeBB, setIncludeBB,
+    includeVV,
+
+    // Session
+    mode,
+    sessionQueue, sessionIndex,
+    sessionStats, mistakeStats,
+    isSessionFinished,
+
+    // Trainer
+    currentSentence, step,
+    splitIndices, chunkLabels, subLabels,
+    validationResult, showAnswerMode,
+    hintMessage, confirmAction, setConfirmAction,
+
+    // UI
+    showHelp, setShowHelp,
+    darkMode, setDarkMode,
+    largeFont, setLargeFont,
+
+    // Derived
+    userChunks, availableSentences,
+
+    // Actions
+    startSession, nextSessionSentence,
+    handleSentenceSelect, toggleSplit,
+    handleNextStep, handleBackStep,
+    handleDragStart, handleDropChunk, handleDropWord,
+    removeLabel, removeSubLabel,
+    handleHint, handleCheck,
+    handleShowAnswerRequest, handleAbortRequest,
+    handleConfirmAction, resetToHome,
+  };
+}
