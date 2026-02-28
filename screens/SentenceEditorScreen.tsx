@@ -1,0 +1,694 @@
+import React, { useState } from 'react';
+import { Token, RoleKey, PredicateType, DifficultyLevel, RoleDefinition } from '../types';
+import { ROLES } from '../constants';
+import { DraggableRole } from '../components/WordChip';
+import {
+  getCustomSentences,
+  saveCustomSentence,
+  deleteCustomSentence,
+  exportCustomSentences,
+  getNextCustomId,
+} from '../data/customSentenceStore';
+import type { Sentence } from '../types';
+
+const EDITOR_PIN = '1234';
+const PIN_SESSION_KEY = 'editor-pin-ok';
+
+type EditorPhase = 'pin' | 'list' | 'input' | 'split' | 'label' | 'meta' | 'preview';
+
+interface SentenceEditorScreenProps {
+  onBack: () => void;
+}
+
+export const SentenceEditorScreen: React.FC<SentenceEditorScreenProps> = ({ onBack }) => {
+  // PIN state
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState(false);
+  const [authenticated, setAuthenticated] = useState(() => sessionStorage.getItem(PIN_SESSION_KEY) === 'true');
+
+  // Editor state
+  const [phase, setPhase] = useState<EditorPhase>('list');
+  const [sentenceText, setSentenceText] = useState('');
+  const [words, setWords] = useState<string[]>([]);
+  const [splitIndices, setSplitIndices] = useState<Set<number>>(new Set());
+  const [chunkLabels, setChunkLabels] = useState<Record<string, RoleKey>>({});
+  const [subLabels, setSubLabels] = useState<Record<string, RoleKey>>({});
+  const [predicateType, setPredicateType] = useState<PredicateType>('WG');
+  const [level, setLevel] = useState<DifficultyLevel>(1);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [customLabel, setCustomLabel] = useState('');
+
+  // List state
+  const [sentences, setSentences] = useState<Sentence[]>(getCustomSentences());
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
+
+  const refreshList = () => setSentences(getCustomSentences());
+
+  // PIN check
+  const handlePinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinInput === EDITOR_PIN) {
+      sessionStorage.setItem(PIN_SESSION_KEY, 'true');
+      setAuthenticated(true);
+      setPinError(false);
+    } else {
+      setPinError(true);
+    }
+  };
+
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4">
+        <form onSubmit={handlePinSubmit} className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 max-w-sm w-full space-y-4">
+          <h2 className="text-xl font-bold text-slate-800 dark:text-white text-center">Docenten-editor</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 text-center">Voer de pincode in om de editor te openen.</p>
+          <input
+            type="password"
+            inputMode="numeric"
+            maxLength={8}
+            value={pinInput}
+            onChange={e => { setPinInput(e.target.value); setPinError(false); }}
+            className="w-full px-4 py-3 text-center text-2xl tracking-[0.5em] font-bold border-2 border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:border-blue-500 outline-none"
+            autoFocus
+            placeholder="****"
+          />
+          {pinError && <p className="text-red-500 text-sm text-center font-medium">Onjuiste pincode</p>}
+          <div className="flex gap-3">
+            <button type="button" onClick={onBack} className="flex-1 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">Terug</button>
+            <button type="submit" className="flex-1 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors">Open</button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  // --- Helper functions ---
+
+  const resetEditor = () => {
+    setSentenceText('');
+    setWords([]);
+    setSplitIndices(new Set());
+    setChunkLabels({});
+    setSubLabels({});
+    setPredicateType('WG');
+    setLevel(1);
+    setEditingId(null);
+    setCustomLabel('');
+  };
+
+  const startNewSentence = () => {
+    resetEditor();
+    setPhase('input');
+  };
+
+  const processText = () => {
+    const trimmed = sentenceText.trim();
+    if (!trimmed) return;
+    const w = trimmed.split(/\s+/);
+    setWords(w);
+    setSplitIndices(new Set());
+    setChunkLabels({});
+    setSubLabels({});
+    setPhase('split');
+  };
+
+  const toggleSplit = (idx: number) => {
+    const next = new Set(splitIndices);
+    if (next.has(idx)) next.delete(idx);
+    else next.add(idx);
+    setSplitIndices(next);
+  };
+
+  // Build chunks from words + splits
+  const getChunks = (): { words: string[]; indices: number[] }[] => {
+    const chunks: { words: string[]; indices: number[] }[] = [];
+    let current: { words: string[]; indices: number[] } = { words: [], indices: [] };
+    words.forEach((w, i) => {
+      current.words.push(w);
+      current.indices.push(i);
+      if (splitIndices.has(i) || i === words.length - 1) {
+        chunks.push(current);
+        current = { words: [], indices: [] };
+      }
+    });
+    return chunks;
+  };
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, roleKey: string) => {
+    e.dataTransfer.setData('text/role', roleKey);
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
+  const handleDropChunk = (e: React.DragEvent<HTMLDivElement>, chunkIdx: number) => {
+    e.preventDefault();
+    const roleKey = e.dataTransfer.getData('text/role') as RoleKey;
+    if (roleKey) {
+      setChunkLabels(prev => ({ ...prev, [chunkIdx]: roleKey }));
+    }
+  };
+
+  const handleDropWord = (e: React.DragEvent<HTMLSpanElement>, wordIdx: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const roleKey = e.dataTransfer.getData('text/role') as RoleKey;
+    if (roleKey) {
+      setSubLabels(prev => ({ ...prev, [`w${wordIdx}`]: roleKey }));
+    }
+  };
+
+  const removeChunkLabel = (chunkIdx: number) => {
+    const next = { ...chunkLabels };
+    delete next[chunkIdx];
+    setChunkLabels(next);
+  };
+
+  const removeSubLabel = (wordIdx: number) => {
+    const next = { ...subLabels };
+    delete next[`w${wordIdx}`];
+    setSubLabels(next);
+  };
+
+  // Build sentence object from editor state
+  const buildSentence = (): Sentence => {
+    const chunks = getChunks();
+    const id = editingId ?? getNextCustomId();
+    const tokens: Token[] = [];
+    let prevRole: RoleKey | null = null;
+
+    chunks.forEach((chunk, chunkIdx) => {
+      const role = chunkLabels[chunkIdx];
+      chunk.indices.forEach((wordIdx, i) => {
+        const token: Token = {
+          id: `c${id}t${wordIdx + 1}`,
+          text: words[wordIdx],
+          role: role,
+        };
+        const sub = subLabels[`w${wordIdx}`];
+        if (sub) token.subRole = sub;
+        // Set newChunk if same role as previous token but in a different chunk
+        if (i === 0 && prevRole === role && chunkIdx > 0) {
+          token.newChunk = true;
+        }
+        tokens.push(token);
+        prevRole = role;
+      });
+    });
+
+    const labelText = customLabel || `Zin ${id}: ${sentenceText.substring(0, 30)}${sentenceText.length > 30 ? '...' : ''}`;
+
+    return {
+      id,
+      label: labelText,
+      predicateType,
+      level,
+      tokens,
+    };
+  };
+
+  // Validation
+  const getValidationErrors = (): string[] => {
+    const chunks = getChunks();
+    const errors: string[] = [];
+
+    if (chunks.length === 0) {
+      errors.push('Geen zinsdelen gedefinieerd.');
+      return errors;
+    }
+
+    const unlabeled = chunks.filter((_, i) => !chunkLabels[i]);
+    if (unlabeled.length > 0) {
+      errors.push(`${unlabeled.length} zinsdeel(en) zonder benaming.`);
+    }
+
+    const roles = Object.values(chunkLabels);
+    if (!roles.includes('pv')) errors.push('Geen Persoonsvorm (PV) benoemd.');
+    if (!roles.includes('ow')) errors.push('Geen Onderwerp (OW) benoemd.');
+
+    if (predicateType === 'WG' && !roles.includes('wg')) {
+      errors.push('Bij WG-zinnen: geen Werkwoordelijk Gezegde (WG) benoemd.');
+    }
+    if (predicateType === 'NG' && !roles.includes('nwd')) {
+      errors.push('Bij NG-zinnen: geen Naamwoordelijk Gezegde (NG) benoemd.');
+    }
+
+    return errors;
+  };
+
+  const handleSave = () => {
+    const sentence = buildSentence();
+    saveCustomSentence(sentence);
+    refreshList();
+    setStatusMsg('Zin opgeslagen!');
+    setTimeout(() => setStatusMsg(null), 2000);
+    resetEditor();
+    setPhase('list');
+  };
+
+  const handleEditSentence = (s: Sentence) => {
+    setEditingId(s.id);
+    const text = s.tokens.map(t => t.text).join(' ');
+    setSentenceText(text);
+    setWords(s.tokens.map(t => t.text));
+    setPredicateType(s.predicateType);
+    setLevel(s.level);
+    setCustomLabel(s.label);
+
+    // Reconstruct splits and labels from tokens
+    const newSplits = new Set<number>();
+    const newChunkLabels: Record<string, RoleKey> = {};
+    const newSubLabels: Record<string, RoleKey> = {};
+    let chunkIdx = 0;
+    newChunkLabels[0] = s.tokens[0].role;
+
+    s.tokens.forEach((t, i) => {
+      if (t.subRole) newSubLabels[`w${i}`] = t.subRole;
+      if (i > 0) {
+        const prevToken = s.tokens[i - 1];
+        if (prevToken.role !== t.role || t.newChunk) {
+          newSplits.add(i - 1);
+          chunkIdx++;
+          newChunkLabels[chunkIdx] = t.role;
+        }
+      }
+    });
+
+    setSplitIndices(newSplits);
+    setChunkLabels(newChunkLabels);
+    setSubLabels(newSubLabels);
+    setPhase('split');
+  };
+
+  const handleDeleteSentence = (id: number) => {
+    if (!confirm('Weet je zeker dat je deze zin wilt verwijderen?')) return;
+    deleteCustomSentence(id);
+    refreshList();
+  };
+
+  const handleExport = () => {
+    const json = exportCustomSentences();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'docent-zinnen.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // --- Render phases ---
+
+  // LIST phase
+  if (phase === 'list') {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-2 md:p-4">
+        <div className="max-w-4xl mx-auto space-y-4">
+          <div className="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Zinnen-editor</h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{sentences.length} eigen zinnen</p>
+              </div>
+              <button onClick={onBack} className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 font-medium transition-colors">Terug</button>
+            </div>
+
+            {statusMsg && (
+              <div className="p-3 mb-4 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-200 text-sm font-medium border border-green-200 dark:border-green-800">{statusMsg}</div>
+            )}
+
+            <div className="flex gap-2 mb-6">
+              <button onClick={startNewSentence} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors">Nieuwe zin</button>
+              {sentences.length > 0 && (
+                <button onClick={handleExport} className="px-4 py-2 border border-green-300 dark:border-green-700 text-green-700 dark:text-green-300 font-medium rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors">Exporteren</button>
+              )}
+            </div>
+
+            {sentences.length === 0 ? (
+              <div className="text-center py-12 text-slate-400 dark:text-slate-500">
+                <p className="text-lg font-medium mb-1">Nog geen eigen zinnen</p>
+                <p className="text-sm">Klik op 'Nieuwe zin' om te beginnen.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {sentences.map(s => (
+                  <div key={s.id} className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-slate-800 dark:text-white text-sm truncate">{s.label}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">
+                        Niveau {s.level} | {s.predicateType} | {s.tokens.length} woorden
+                      </p>
+                    </div>
+                    <div className="flex gap-2 ml-3">
+                      <button onClick={() => handleEditSentence(s)} className="px-3 py-1 text-xs font-medium rounded border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">Bewerk</button>
+                      <button onClick={() => handleDeleteSentence(s.id)} className="px-3 py-1 text-xs font-medium rounded border border-red-300 dark:border-red-700 text-red-600 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">Verwijder</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // INPUT phase
+  if (phase === 'input') {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-2 md:p-4 flex items-center justify-center">
+        <div className="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 max-w-2xl w-full space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white">
+              {editingId ? 'Zin bewerken' : 'Nieuwe zin invoeren'}
+            </h2>
+            <button onClick={() => { resetEditor(); setPhase('list'); }} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Annuleer</button>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Type de zin</label>
+            <textarea
+              value={sentenceText}
+              onChange={e => setSentenceText(e.target.value)}
+              className="w-full px-4 py-3 border-2 border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white text-lg focus:border-blue-500 outline-none resize-none"
+              rows={3}
+              placeholder="Typ hier de zin..."
+              autoFocus
+            />
+          </div>
+
+          <button
+            onClick={processText}
+            disabled={!sentenceText.trim()}
+            className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Verder naar verdelen
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const chunks = getChunks();
+
+  // SPLIT phase
+  if (phase === 'split') {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-2 md:p-4">
+        <div className="max-w-4xl mx-auto space-y-4">
+          <div className="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Stap 1: Verdelen</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Klik tussen de woorden om de zin in zinsdelen te knippen.</p>
+              </div>
+              <button onClick={() => setPhase('input')} className="text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Terug naar invoer</button>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-y-6 select-none py-4 text-xl md:text-2xl leading-loose">
+              {words.map((word, idx) => (
+                <React.Fragment key={idx}>
+                  <span className="px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded text-slate-800 dark:text-slate-100 font-medium transition-colors">{word}</span>
+                  {idx < words.length - 1 && (
+                    <div onClick={() => toggleSplit(idx)} className="group relative w-10 h-12 mx-0 cursor-pointer flex items-center justify-center transition-all">
+                      <div className={`w-1 h-8 rounded-full transition-all duration-200 ${splitIndices.has(idx) ? 'bg-blue-500 h-10 shadow-[0_0_12px_rgba(59,130,246,0.6)]' : 'bg-slate-200 dark:bg-slate-600 group-hover:bg-slate-300 dark:group-hover:bg-slate-500'}`}></div>
+                      <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-7 h-7 bg-white dark:bg-slate-700 rounded-full shadow-md border dark:border-slate-600 flex items-center justify-center text-sm transition-all duration-200 pointer-events-none z-10 ${splitIndices.has(idx) ? 'opacity-100 border-blue-500 text-blue-500 scale-100' : 'opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 text-slate-400'}`}>✂️</div>
+                    </div>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+
+            <div className="text-center text-sm text-slate-500 dark:text-slate-400">
+              {chunks.length} zinsdeel{chunks.length !== 1 ? 'en' : ''}
+            </div>
+
+            <div className="flex justify-center gap-3">
+              <button onClick={() => { resetEditor(); setPhase('list'); }} className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">Annuleer</button>
+              <button onClick={() => setPhase('label')} className="px-8 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-all">
+                Naar benoemen →
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // LABEL phase
+  if (phase === 'label') {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-2 md:p-4 pb-24">
+        <div className="max-w-5xl mx-auto space-y-4">
+          {/* Role toolbar */}
+          <div className="bg-white dark:bg-slate-800 p-3 md:p-4 rounded-xl shadow-md border border-slate-200 dark:border-slate-700 sticky top-0 z-[100]">
+            <div className="flex flex-col gap-2 md:gap-4">
+              <div>
+                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Zinsdelen & Gezegde:</p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {ROLES.filter(r => !r.isSubOnly).map(role => (
+                    <DraggableRole key={role.key} role={role} onDragStart={handleDragStart} />
+                  ))}
+                </div>
+              </div>
+              <div className="border-t border-slate-100 dark:border-slate-700 pt-3">
+                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Sleep op specifieke woorden:</p>
+                <div className="flex flex-wrap gap-2">
+                  {ROLES.filter(r => r.isSubOnly).map(role => (
+                    <DraggableRole key={role.key} role={role} onDragStart={handleDragStart} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Chunks */}
+          <div className="flex flex-wrap gap-y-6 gap-x-3 justify-center items-start pt-2 px-1">
+            {chunks.map((chunk, chunkIdx) => {
+              const assignedRoleKey = chunkLabels[chunkIdx];
+              const roleDef = assignedRoleKey ? ROLES.find(r => r.key === assignedRoleKey) || null : null;
+
+              return (
+                <EditorChunk
+                  key={chunkIdx}
+                  chunk={chunk}
+                  chunkIdx={chunkIdx}
+                  roleDef={roleDef}
+                  subLabels={subLabels}
+                  onDropChunk={handleDropChunk}
+                  onDropWord={handleDropWord}
+                  onRemoveChunkLabel={removeChunkLabel}
+                  onRemoveSubLabel={removeSubLabel}
+                />
+              );
+            })}
+          </div>
+
+          {/* Footer */}
+          <div className="fixed bottom-0 left-0 w-full bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-[500] p-3">
+            <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
+              <button onClick={() => setPhase('split')} className="px-3 py-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 font-medium text-sm transition-colors">← Terug</button>
+              <div className="text-xs text-slate-400 dark:text-slate-500">
+                {Object.keys(chunkLabels).length} / {chunks.length} benoemd
+              </div>
+              <button
+                onClick={() => setPhase('meta')}
+                disabled={Object.keys(chunkLabels).length < chunks.length}
+                className="px-6 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+              >
+                Verder →
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // META phase
+  if (phase === 'meta') {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-2 md:p-4 flex items-center justify-center">
+        <div className="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 max-w-lg w-full space-y-6">
+          <h2 className="text-xl font-bold text-slate-800 dark:text-white">Stap 3: Eigenschappen</h2>
+
+          <div>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Label (naam van de zin)</label>
+            <input
+              type="text"
+              value={customLabel || `Zin ${editingId ?? getNextCustomId()}: ${sentenceText.substring(0, 30)}${sentenceText.length > 30 ? '...' : ''}`}
+              onChange={e => setCustomLabel(e.target.value)}
+              className="w-full px-4 py-2 border-2 border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:border-blue-500 outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Soort gezegde</label>
+            <div className="flex gap-3">
+              <button onClick={() => setPredicateType('WG')} className={`flex-1 py-3 rounded-lg font-bold border-2 transition-all ${predicateType === 'WG' ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>Werkwoordelijk (WG)</button>
+              <button onClick={() => setPredicateType('NG')} className={`flex-1 py-3 rounded-lg font-bold border-2 transition-all ${predicateType === 'NG' ? 'bg-yellow-500 text-white border-yellow-500' : 'border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>Naamwoordelijk (NG)</button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Moeilijkheidsgraad</label>
+            <div className="flex gap-2">
+              {([1, 2, 3, 4] as DifficultyLevel[]).map(lvl => (
+                <button key={lvl} onClick={() => setLevel(lvl)} className={`flex-1 py-2 text-sm font-bold rounded-lg border-2 transition-all ${level === lvl ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
+                  {lvl === 1 ? 'Basis' : lvl === 2 ? 'Middel' : lvl === 3 ? 'Hoog' : 'Sameng.'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button onClick={() => setPhase('label')} className="flex-1 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">← Terug</button>
+            <button onClick={() => setPhase('preview')} className="flex-1 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors">Voorbeeld bekijken</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // PREVIEW phase
+  if (phase === 'preview') {
+    const errors = getValidationErrors();
+    const sentence = buildSentence();
+
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-2 md:p-4 flex items-center justify-center">
+        <div className="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 max-w-2xl w-full space-y-6">
+          <h2 className="text-xl font-bold text-slate-800 dark:text-white">Voorbeeld</h2>
+
+          <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-lg space-y-2">
+            <p className="font-bold text-slate-800 dark:text-white">{sentence.label}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{sentence.predicateType} | Niveau {sentence.level} | {sentence.tokens.length} woorden</p>
+          </div>
+
+          {/* Token preview */}
+          <div className="flex flex-wrap gap-1">
+            {sentence.tokens.map((t, i) => {
+              const rd = ROLES.find(r => r.key === t.role);
+              return (
+                <span key={i} className={`px-2 py-1 rounded text-xs font-medium border ${rd?.colorClass || ''} ${rd?.borderColorClass || ''}`}>
+                  {t.text}
+                  <span className="opacity-60 ml-1">{rd?.shortLabel}</span>
+                  {t.subRole && <span className="opacity-50 ml-0.5">({ROLES.find(r => r.key === t.subRole)?.shortLabel})</span>}
+                  {t.newChunk && <span className="opacity-50 ml-0.5">[NC]</span>}
+                </span>
+              );
+            })}
+          </div>
+
+          {errors.length > 0 && (
+            <div className="p-3 bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-700 rounded-lg">
+              <p className="font-bold text-orange-800 dark:text-orange-200 text-sm mb-1">Waarschuwingen:</p>
+              <ul className="text-sm text-orange-700 dark:text-orange-300 list-disc list-inside">
+                {errors.map((e, i) => <li key={i}>{e}</li>)}
+              </ul>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button onClick={() => setPhase('meta')} className="flex-1 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">← Terug</button>
+            <button onClick={handleSave} className="flex-1 py-2 rounded-lg bg-green-600 text-white font-bold hover:bg-green-700 transition-colors">
+              {editingId ? 'Bijwerken' : 'Opslaan'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+};
+
+// --- EditorChunk sub-component ---
+
+interface EditorChunkProps {
+  chunk: { words: string[]; indices: number[] };
+  chunkIdx: number;
+  roleDef: RoleDefinition | null;
+  subLabels: Record<string, RoleKey>;
+  onDropChunk: (e: React.DragEvent<HTMLDivElement>, chunkIdx: number) => void;
+  onDropWord: (e: React.DragEvent<HTMLSpanElement>, wordIdx: number) => void;
+  onRemoveChunkLabel: (chunkIdx: number) => void;
+  onRemoveSubLabel: (wordIdx: number) => void;
+}
+
+const EditorChunk: React.FC<EditorChunkProps> = ({
+  chunk, chunkIdx, roleDef, subLabels,
+  onDropChunk, onDropWord, onRemoveChunkLabel, onRemoveSubLabel,
+}) => {
+  const [isOver, setIsOver] = useState(false);
+  const [hoveredWord, setHoveredWord] = useState<number | null>(null);
+
+  let borderColor = 'border-slate-300 dark:border-slate-600';
+  let bgColor = 'bg-white dark:bg-slate-800';
+
+  if (isOver) {
+    borderColor = 'border-blue-400 dark:border-blue-500';
+    bgColor = 'bg-blue-50 dark:bg-blue-900/20';
+  } else if (roleDef) {
+    borderColor = roleDef.borderColorClass;
+  }
+
+  return (
+    <div
+      className={`relative flex flex-col min-w-[140px] rounded-xl border-2 transition-colors duration-200 ${borderColor} ${bgColor}`}
+      onDragOver={e => { e.preventDefault(); if (hoveredWord === null) setIsOver(true); }}
+      onDrop={e => { if (hoveredWord !== null) return; setIsOver(false); onDropChunk(e, chunkIdx); }}
+      onDragLeave={() => setIsOver(false)}
+    >
+      {/* Role header */}
+      <div
+        className={`h-9 border-b border-dashed border-slate-200 dark:border-slate-600 flex items-center justify-center text-xs rounded-t-lg cursor-pointer transition-opacity ${roleDef ? roleDef.colorClass + ' font-bold hover:opacity-80' : 'text-slate-400 dark:text-slate-500 italic'}`}
+        onClick={() => roleDef && onRemoveChunkLabel(chunkIdx)}
+      >
+        {roleDef ? (
+          <div className="flex items-center gap-2 w-full justify-center px-2 relative group/header">
+            <span>{roleDef.label}</span>
+            <button onClick={e => { e.stopPropagation(); onRemoveChunkLabel(chunkIdx); }} className="hidden group-hover/header:flex absolute right-0 hover:bg-black/10 dark:hover:bg-white/10 rounded-full w-5 h-5 items-center justify-center transition-colors">×</button>
+          </div>
+        ) : (
+          'Sleep zinsdeel hier'
+        )}
+      </div>
+
+      {/* Words */}
+      <div className="p-3 flex flex-wrap gap-y-4 gap-x-0 justify-center items-end min-h-[60px] text-lg leading-tight">
+        {chunk.words.map((word, i) => {
+          const wordIdx = chunk.indices[i];
+          const subKey = `w${wordIdx}`;
+          const subRole = subLabels[subKey] ? ROLES.find(r => r.key === subLabels[subKey]) : null;
+          const isHovered = hoveredWord === wordIdx;
+
+          return (
+            <div key={wordIdx} className="relative flex flex-col items-center group/word">
+              {subRole && (
+                <div
+                  className={`absolute -top-6 text-[9px] px-1.5 py-0.5 rounded-md border shadow-sm whitespace-nowrap z-10 cursor-pointer ${subRole.colorClass} ${subRole.borderColorClass}`}
+                  onClick={() => onRemoveSubLabel(wordIdx)}
+                  title="Klik om te verwijderen"
+                >
+                  {subRole.shortLabel}
+                </div>
+              )}
+              <span
+                className={`text-slate-800 dark:text-slate-200 font-medium px-1 py-1 rounded transition-colors duration-200 border border-transparent ${isHovered ? 'bg-yellow-100 dark:bg-yellow-900/50 border-yellow-300 dark:border-yellow-600 shadow-sm' : ''} ${!isHovered && !subRole ? 'hover:bg-slate-100 dark:hover:bg-slate-700' : ''}`}
+                onDragOver={e => { e.preventDefault(); e.stopPropagation(); }}
+                onDragEnter={e => { e.preventDefault(); e.stopPropagation(); setHoveredWord(wordIdx); setIsOver(false); }}
+                onDragLeave={e => { e.preventDefault(); e.stopPropagation(); setHoveredWord(null); }}
+                onDrop={e => {
+                  e.preventDefault(); e.stopPropagation();
+                  onDropWord(e, wordIdx);
+                  setHoveredWord(null);
+                }}
+              >
+                {word}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};

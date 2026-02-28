@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
-import { SENTENCES, ROLES, FEEDBACK_MATRIX, FEEDBACK_STRUCTURE, HINTS } from '../constants';
+import { useState, useEffect, useMemo } from 'react';
+import { ROLES, FEEDBACK_MATRIX, FEEDBACK_STRUCTURE, HINTS } from '../constants';
 import { Sentence, PlacementMap, RoleKey, Token, DifficultyLevel, ValidationState } from '../types';
+import { useSentences } from './useSentences';
+import { getCustomSentences } from '../data/customSentenceStore';
 
 export type AppStep = 'split' | 'label';
 export type Mode = 'free' | 'session';
@@ -73,11 +75,16 @@ export interface TrainerState {
   largeFont: boolean;
   setLargeFont: (v: boolean) => void;
 
+  // Loading
+  isLoadingSentences: boolean;
+  sentenceLoadError: string | null;
+
   // Derived
   userChunks: ChunkData[];
   availableSentences: Sentence[];
 
   // Actions
+  refreshCustomSentences: () => void;
   startSession: () => void;
   nextSessionSentence: () => void;
   handleSentenceSelect: (sentenceId: number) => void;
@@ -146,6 +153,21 @@ export function useTrainer(): TrainerState {
   const [showAnswerMode, setShowAnswerMode] = useState(false);
   const [hintMessage, setHintMessage] = useState<string | null>(null);
 
+  // --- Sentence loading ---
+  const { sentences: builtInSentences, isLoading: isLoadingSentences, error: sentenceLoadError, findSentenceById } = useSentences(selectedLevel);
+  const [customSentences, setCustomSentences] = useState<Sentence[]>(getCustomSentences());
+
+  const refreshCustomSentences = () => {
+    setCustomSentences(getCustomSentences());
+  };
+
+  const allSentences = useMemo(() => {
+    const custom = selectedLevel !== null
+      ? customSentences.filter(s => s.level === selectedLevel)
+      : customSentences;
+    return [...builtInSentences, ...custom];
+  }, [builtInSentences, customSentences, selectedLevel]);
+
   // --- Effects ---
   useEffect(() => {
     if (darkMode) {
@@ -158,7 +180,7 @@ export function useTrainer(): TrainerState {
   // --- Logic ---
 
   const getFilteredSentences = (): Sentence[] => {
-    return SENTENCES.filter(s => {
+    return allSentences.filter(s => {
       const isCompound = s.level === 4;
       if (isCompound && !focusBijzin) return false;
 
@@ -240,12 +262,19 @@ export function useTrainer(): TrainerState {
     }
   };
 
-  const handleSentenceSelect = (sentenceId: number) => {
+  const handleSentenceSelect = async (sentenceId: number) => {
     if (sentenceId === -1) {
         setCurrentSentence(null);
         return;
     }
-    const selected = SENTENCES.find(s => s.id === sentenceId);
+    // Check custom sentences first, then built-in
+    const fromCustom = customSentences.find(s => s.id === sentenceId);
+    if (fromCustom) {
+      setMode('free');
+      loadSentence(fromCustom);
+      return;
+    }
+    const selected = await findSentenceById(sentenceId);
     if (selected) {
       setMode('free');
       loadSentence(selected);
@@ -563,6 +592,9 @@ export function useTrainer(): TrainerState {
     validationResult, showAnswerMode,
     hintMessage, confirmAction, setConfirmAction,
 
+    // Loading
+    isLoadingSentences, sentenceLoadError,
+
     // UI
     showHelp, setShowHelp,
     darkMode, setDarkMode,
@@ -572,6 +604,7 @@ export function useTrainer(): TrainerState {
     userChunks, availableSentences,
 
     // Actions
+    refreshCustomSentences,
     startSession, nextSessionSentence,
     handleSentenceSelect, toggleSplit,
     handleNextStep, handleBackStep,

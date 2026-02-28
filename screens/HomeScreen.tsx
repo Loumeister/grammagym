@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { DifficultyLevel } from '../types';
 import { HelpModal } from '../components/HelpModal';
 import { TrainerState } from '../hooks/useTrainer';
+import { importCustomSentences, getCustomSentences } from '../data/customSentenceStore';
 
 type HomeScreenProps = Pick<TrainerState,
   | 'predicateMode' | 'setPredicateMode'
@@ -17,6 +18,9 @@ type HomeScreenProps = Pick<TrainerState,
   | 'darkMode' | 'setDarkMode'
   | 'largeFont' | 'setLargeFont'
   | 'availableSentences'
+  | 'isLoadingSentences'
+  | 'sentenceLoadError'
+  | 'refreshCustomSentences'
   | 'startSession'
   | 'handleSentenceSelect'
 >;
@@ -35,9 +39,33 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   darkMode, setDarkMode,
   largeFont, setLargeFont,
   availableSentences,
+  isLoadingSentences,
+  sentenceLoadError,
+  refreshCustomSentences,
   startSession,
   handleSentenceSelect,
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+  const customCount = getCustomSentences().length;
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const imported = importCustomSentences(text);
+      refreshCustomSentences();
+      setImportMsg(`${imported.length} docent-zinnen geladen.`);
+      setTimeout(() => setImportMsg(null), 3000);
+    } catch (err) {
+      setImportMsg(`Fout: ${err instanceof Error ? err.message : 'Ongeldig bestand'}`);
+      setTimeout(() => setImportMsg(null), 4000);
+    }
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-2 md:p-4 font-sans flex items-center justify-center relative transition-colors duration-300">
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
@@ -146,21 +174,44 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <div className="flex flex-col gap-6">
             <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-xl border border-blue-100 dark:border-blue-800 text-center flex flex-col justify-center flex-1">
               <h3 className="font-bold text-blue-800 dark:text-blue-200 text-xl mb-2">Start Oefensessie</h3>
-              <div className="text-sm text-blue-600 dark:text-blue-300 mb-4 font-medium">{availableSentences.length} zinnen beschikbaar</div>
+              {isLoadingSentences ? (
+                <div className="text-sm text-blue-500 dark:text-blue-300 mb-4 font-medium">Zinnen laden...</div>
+              ) : sentenceLoadError ? (
+                <div className="text-sm text-red-500 dark:text-red-300 mb-4 font-medium">{sentenceLoadError}</div>
+              ) : (
+                <div className="text-sm text-blue-600 dark:text-blue-300 mb-4 font-medium">{availableSentences.length} zinnen beschikbaar</div>
+              )}
               <div className="flex flex-col items-center gap-3">
                 <div className="flex flex-col items-center gap-1 w-full">
                   <label className="text-xs font-bold text-blue-800 dark:text-blue-300 uppercase">Aantal zinnen</label>
                   <input type="number" min="1" max={availableSentences.length} value={customSessionCount} onChange={(e) => setCustomSessionCount(Math.max(1, Math.min(availableSentences.length, parseInt(e.target.value) || 1)))} className="w-full px-3 py-3 text-lg font-bold text-center border-2 border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-800 text-blue-900 dark:text-blue-100 rounded-lg focus:border-blue-500 outline-none" />
                 </div>
-                <button onClick={startSession} className="w-full h-[46px] px-8 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 transition-all">Start</button>
+                <button onClick={startSession} disabled={isLoadingSentences || availableSentences.length === 0} className="w-full h-[46px] px-8 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                  {isLoadingSentences ? 'Laden...' : 'Start'}
+                </button>
               </div>
             </div>
             <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col justify-center">
               <h3 className="font-bold text-slate-700 dark:text-slate-200 mb-2 text-center">Kies één zin</h3>
-              <select className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" onChange={(e) => handleSentenceSelect(Number(e.target.value))} defaultValue="">
-                <option value="" disabled>-- Selecteer --</option>
+              <select className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" onChange={(e) => handleSentenceSelect(Number(e.target.value))} defaultValue="" disabled={isLoadingSentences}>
+                <option value="" disabled>{isLoadingSentences ? 'Laden...' : '-- Selecteer --'}</option>
                 {availableSentences.map(s => (<option key={s.id} value={s.id}>{s.label}</option>))}
               </select>
+            </div>
+
+            {/* Import teacher sentences */}
+            <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-100 dark:border-green-800 flex flex-col items-center gap-2">
+              <h3 className="font-bold text-green-800 dark:text-green-200 text-sm">Docent-zinnen</h3>
+              {customCount > 0 && (
+                <p className="text-xs text-green-600 dark:text-green-300">{customCount} eigen zinnen geladen</p>
+              )}
+              <input ref={fileInputRef} type="file" accept=".json" onChange={handleImportFile} className="hidden" />
+              <button onClick={() => fileInputRef.current?.click()} className="px-4 py-2 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700 transition-colors">
+                Importeer zinnen (.json)
+              </button>
+              {importMsg && (
+                <p className={`text-xs font-medium ${importMsg.startsWith('Fout') ? 'text-red-600 dark:text-red-300' : 'text-green-600 dark:text-green-300'}`}>{importMsg}</p>
+              )}
             </div>
           </div>
         </div>

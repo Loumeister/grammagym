@@ -1,10 +1,41 @@
+import { useState, useEffect } from 'react';
 import { useTrainer } from './hooks/useTrainer';
 import { HomeScreen } from './screens/HomeScreen';
 import { ScoreScreen } from './screens/ScoreScreen';
 import { TrainerScreen } from './screens/TrainerScreen';
+import { SentenceEditorScreen } from './screens/SentenceEditorScreen';
+import { preloadCommonLevels } from './data/sentenceLoader';
 
 export default function App() {
   const trainer = useTrainer();
+  const [showEditor, setShowEditor] = useState(() => window.location.hash === '#/editor');
+
+  // Preload common sentence levels
+  useEffect(() => {
+    preloadCommonLevels();
+  }, []);
+
+  // Listen for hash changes
+  useEffect(() => {
+    const onHashChange = () => {
+      setShowEditor(window.location.hash === '#/editor');
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  // Editor screen (hidden route)
+  if (showEditor) {
+    return (
+      <SentenceEditorScreen
+        onBack={() => {
+          window.location.hash = '';
+          setShowEditor(false);
+          trainer.refreshCustomSentences();
+        }}
+      />
+    );
+  }
 
   // Home Screen: no active sentence and no finished session
   if (!trainer.currentSentence && !trainer.isSessionFinished) {
@@ -23,6 +54,9 @@ export default function App() {
         darkMode={trainer.darkMode} setDarkMode={trainer.setDarkMode}
         largeFont={trainer.largeFont} setLargeFont={trainer.setLargeFont}
         availableSentences={trainer.availableSentences}
+        isLoadingSentences={trainer.isLoadingSentences}
+        sentenceLoadError={trainer.sentenceLoadError}
+        refreshCustomSentences={trainer.refreshCustomSentences}
         startSession={trainer.startSession}
         handleSentenceSelect={trainer.handleSentenceSelect}
       />
