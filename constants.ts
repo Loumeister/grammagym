@@ -41,7 +41,7 @@ export const ROLES: RoleDefinition[] = [
   { 
     key: 'vv', 
     label: 'Voorzetselvoorwerp', 
-    shortLabel: 'VV', 
+    shortLabel: 'VZV', 
     colorClass: 'bg-pink-50 text-pink-700 dark:bg-pink-900/40 dark:text-pink-100', 
     borderColorClass: 'border-pink-200 dark:border-pink-700' 
   },
@@ -129,54 +129,54 @@ export const FEEDBACK_MATRIX: Record<string, Record<string, string>> = {
 
   // WERKWOORDELIJK GEZEGDE
   'wg': {
-    'pv': "Dit is maar één woord. Welke werkwoorden horen er nog bij voor het WG?",
-    'ng': "Staat hier een koppelwerkwoord? Dan heet het geheel NG.",
+    'pv': "Dit is maar één woord. Welke werkwoorden horen er nog bij?",
+    'ng': "Drukt het werkwoord iets uit wat er wordt gedaan, of iets wat er is of wordt?",
     'lv': "Is dit een 'ding'/'persoon', of een werkwoordsvorm die bij het gezegde hoort?"
   },
 
   // NAAMWOORDELIJK GEZEGDE
   'ng': {
-    'wg': "Is dit werkwoord een koppelwerkwoord? Zo niet, dan is het WG.",
-    'lv': "Beschrijft dit een eigenschap van het OW? Dan is het NG, niet LV.",
-    'bwb': "Dit beschrijft de toestand van het OW via een koppelwerkwoord, niet hoe iets gebeurt."
+    'wg': "Drukt het werkwoord iets uit wat er wordt gedaan, of iets wat er is of wordt?",
+    'lv': "Beschrijft dit een eigenschap van het OW, of ondergaat het een handeling?",
+    'bwb': "Zegt dit iets over de toestand van het OW, of geeft het aan hoe iets gebeurt?"
   },
 
   // LIJDEND VOORWERP
   'lv': {
     'ow': "Voert dit de actie uit of ondergaat het die? Check: Wie of wat + PV?",
-    'vv': "Begint dit met een vast voorzetsel bij het werkwoord? Dan is het VV, niet LV.",
-    'bwb': "Geeft dit info over waar/wanneer/waarom? Dan is het BWB, niet LV.",
-    'mv': "Kun je 'aan' of 'voor' erbij denken? Dan is het MV, niet LV."
+    'vv': "Begint dit met een voorzetsel dat vast bij het werkwoord hoort?",
+    'bwb': "Geeft dit info over waar, wanneer of waarom?",
+    'mv': "Kun je 'aan' of 'voor' voor dit zinsdeel denken?"
   },
 
   // MEEWERKEND VOORWERP
   'mv': {
-    'ow': "Voert dit de actie uit? Dan is het OW. Check: Wie of wat + PV?",
-    'lv': "LV: Wie/wat ondergaat het? MV: Aan/voor wie?",
-    'vv': "Kun je 'aan'/'voor' weglaten? Dan is het MV. Zit het voorzetsel vast? Dan is het VV."
+    'ow': "Voert dit de actie uit? Check: Wie of wat + PV?",
+    'lv': "Wie/wat ondergaat de handeling, of aan/voor wie?",
+    'vv': "Kun je 'aan'/'voor' weglaten, of zit het voorzetsel vast bij het werkwoord?"
   },
 
   // VOORZETSELVOORWERP
   'vv': {
-    'bwb': "Geeft dit los van het werkwoord een plaats of tijd aan? Dan is het BWB, niet VV.",
-    'lv': "Hoort het voorzetsel niet vast bij het werkwoord? Dan is het LV, niet VV.",
-    'mv': "Kun je het voorzetsel vervangen door 'aan'/'voor'? Dan is het MV, niet VV."
+    'bwb': "Geeft dit los van het werkwoord een plaats of tijd aan?",
+    'lv': "Hoort het voorzetsel echt vast bij het werkwoord?",
+    'mv': "Kun je het voorzetsel vervangen door 'aan' of 'voor'?"
   },
 
   // BIJWOORDELIJKE BEPALING
   'bwb': {
-    'vv': "Hoort dit voorzetsel vast bij het werkwoord? Dan is het VV, niet BWB.",
-    'lv': "Ondergaat dit zinsdeel de actie? Dan is het LV, niet BWB.",
-    'ow': "Kun je 'Wie of wat + PV?' beantwoorden met dit zinsdeel? Dan is het OW, niet BWB.",
-    'bijzin': "Heeft dit zinsdeel een eigen PV? Dan is het een bijzin, niet BWB."
+    'vv': "Hoort dit voorzetsel vast bij het werkwoord?",
+    'lv': "Ondergaat dit zinsdeel de actie?",
+    'ow': "Kun je 'Wie of wat + PV?' beantwoorden met dit zinsdeel?",
+    'bijzin': "Heeft dit zinsdeel een eigen PV?"
   },
 
   // BIJSTELLING
   'bijst': {
-    'bijv_bep': "Staat dit tussen komma's als hernoemer van het vorige zinsdeel? Dan is het bijstelling, niet BB.",
-    'ow': "Voert dit de actie uit? Check: Wie of wat + PV? Dan is het OW, niet bijstelling.",
-    'lv': "Ondergaat dit de actie? Dan is het LV, niet bijstelling.",
-    'bwb': "Geeft dit tijd, plaats of manier aan? Dan is het BWB, niet bijstelling."
+    'bijv_bep': "Voegt dit een eigenschap toe aan een zinsdeel, of is het een andere naam daarvoor?",
+    'ow': "Voert dit de actie uit? Check: Wie of wat + PV?",
+    'lv': "Ondergaat dit de actie?",
+    'bwb': "Geeft dit tijd, plaats of manier aan?"
   },
 
   // BIJZIN
@@ -188,14 +188,14 @@ export const FEEDBACK_MATRIX: Record<string, Record<string, string>> = {
 
   // ONDERSCHIKKEND VOEGWOORD
   'vw_onder': {
-    'vw_neven': "Dit leidt een bijzin in: onderschikkend VW.",
-    'bwb': "Dit leidt een bijzin in, geen BWB: onderschikkend VW."
+    'vw_neven': "Verbindt dit twee gelijkwaardige zinnen, of leidt het een bijzin in?",
+    'bwb': "Leidt dit echt een bijzin in, of geeft het extra info over tijd, plaats of manier?"
   },
 
   // NEVENSCHIKKEND VOEGWOORD
   'vw_neven': {
-    'vw_onder': "Dit verbindt twee hoofdzinnen: nevenschikkend VW.",
-    'bwb': "Dit knoopt twee hoofdzinnen aaneen, geen BWB: nevenschikkend VW."
+    'vw_onder': "Verbindt dit twee gelijkwaardige zinnen, of leidt het een bijzin in?",
+    'bwb': "Knoopt dit twee hoofdzinnen aaneen, of geeft het extra info over tijd, plaats of manier?"
   }
 };
 
