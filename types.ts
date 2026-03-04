@@ -11,6 +11,8 @@ export interface Token {
   subRole?: RoleKey; // The internal role (e.g. bijv_bep inside an OW)
   newChunk?: boolean; // Explicitly marks the start of a new constituent, even if the role is the same as previous
   alternativeRole?: RoleKey; // An acceptable alternative role for ambiguous sentences
+  bijzinFunctie?: RoleKey; // The grammatical function of a bijzin in the sentence (e.g. lv, bwb, ow)
+  bijvBepTarget?: string; // Token ID of the word this bijv_bep modifies (for bvb sub-roles and bijzin bvb functions)
 }
 
 export interface Sentence {

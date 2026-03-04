@@ -58,6 +58,9 @@ export interface TrainerState {
   splitIndices: Set<number>;
   chunkLabels: PlacementMap;
   subLabels: PlacementMap;
+  bijzinFunctieLabels: PlacementMap;
+  bijvBepLinks: Record<string, string>;
+  linkingBijvBepId: string | null;
   validationResult: ValidationResult | null;
   showAnswerMode: boolean;
   hintMessage: string | null;
@@ -94,6 +97,12 @@ export interface TrainerState {
   handleDropWord: (e: React.DragEvent<HTMLSpanElement>, tokenId: string) => void;
   removeLabel: (chunkId: string) => void;
   removeSubLabel: (tokenId: string) => void;
+  handleDropBijzinFunctie: (e: React.DragEvent<HTMLDivElement>, chunkId: string) => void;
+  removeBijzinFunctieLabel: (chunkId: string) => void;
+  startBijvBepLinking: (sourceId: string) => void;
+  completeBijvBepLink: (targetTokenId: string) => void;
+  cancelBijvBepLinking: () => void;
+  removeBijvBepLink: (sourceId: string) => void;
   handleHint: () => void;
   handleCheck: () => void;
   handleShowAnswerRequest: () => void;
@@ -146,6 +155,9 @@ export function useTrainer(): TrainerState {
   // Labeling State
   const [chunkLabels, setChunkLabels] = useState<PlacementMap>({});
   const [subLabels, setSubLabels] = useState<PlacementMap>({});
+  const [bijzinFunctieLabels, setBijzinFunctieLabels] = useState<PlacementMap>({});
+  const [bijvBepLinks, setBijvBepLinks] = useState<Record<string, string>>({});
+  const [linkingBijvBepId, setLinkingBijvBepId] = useState<string | null>(null);
 
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [showAnswerMode, setShowAnswerMode] = useState(false);
@@ -225,6 +237,9 @@ export function useTrainer(): TrainerState {
     setSplitIndices(new Set());
     setChunkLabels({});
     setSubLabels({});
+    setBijzinFunctieLabels({});
+    setBijvBepLinks({});
+    setLinkingBijvBepId(null);
     setValidationResult(null);
     setShowAnswerMode(false);
     setHintMessage(null);
@@ -368,6 +383,56 @@ export function useTrainer(): TrainerState {
     setHintMessage(null);
   };
 
+  const handleDropBijzinFunctie = (e: React.DragEvent<HTMLDivElement>, chunkId: string) => {
+    e.preventDefault();
+    if (showAnswerMode) return;
+    const roleKey = e.dataTransfer.getData("text/role") as RoleKey;
+    if (roleKey) {
+      setBijzinFunctieLabels(prev => ({ ...prev, [chunkId]: roleKey }));
+      setValidationResult(null);
+      setHintMessage(null);
+    }
+  };
+
+  const removeBijzinFunctieLabel = (chunkId: string) => {
+    if (showAnswerMode) return;
+    const newLabels = { ...bijzinFunctieLabels };
+    delete newLabels[chunkId];
+    setBijzinFunctieLabels(newLabels);
+    // Also remove any bvb link for this chunk
+    const newLinks = { ...bijvBepLinks };
+    delete newLinks[chunkId];
+    setBijvBepLinks(newLinks);
+    setValidationResult(null);
+    setHintMessage(null);
+  };
+
+  const startBijvBepLinking = (sourceId: string) => {
+    if (showAnswerMode) return;
+    setLinkingBijvBepId(sourceId);
+  };
+
+  const completeBijvBepLink = (targetTokenId: string) => {
+    if (!linkingBijvBepId) return;
+    setBijvBepLinks(prev => ({ ...prev, [linkingBijvBepId]: targetTokenId }));
+    setLinkingBijvBepId(null);
+    setValidationResult(null);
+    setHintMessage(null);
+  };
+
+  const cancelBijvBepLinking = () => {
+    setLinkingBijvBepId(null);
+  };
+
+  const removeBijvBepLink = (sourceId: string) => {
+    if (showAnswerMode) return;
+    const newLinks = { ...bijvBepLinks };
+    delete newLinks[sourceId];
+    setBijvBepLinks(newLinks);
+    setValidationResult(null);
+    setHintMessage(null);
+  };
+
   const handleHint = () => {
     if (!currentSentence) return;
 
@@ -384,6 +449,20 @@ export function useTrainer(): TrainerState {
     if (actualRolesInSentence.has('nwd') && !usedRoles.includes('nwd')) { setHintMessage(HINTS.MISSING_NG); return; }
     if (actualRolesInSentence.has('lv') && !usedRoles.includes('lv')) { setHintMessage(HINTS.MISSING_LV); return; }
 
+    // Check for missing bijzin function labels
+    const userChunks = getUserChunks();
+    for (const chunk of userChunks) {
+      const firstToken = chunk.tokens[0];
+      const userLabel = chunkLabels[firstToken.id];
+      const functie = firstToken.bijzinFunctie;
+      // Skip bijv_bep function requirement when includeBB is off
+      if (functie === 'bijv_bep' && !includeBB) continue;
+      if (userLabel === 'bijzin' && functie && !bijzinFunctieLabels[firstToken.id]) {
+        setHintMessage(HINTS.MISSING_BIJZIN_FUNCTIE);
+        return;
+      }
+    }
+
     const remainingMissing = Array.from(actualRolesInSentence).find(r => !usedRoles.includes(r));
     if (remainingMissing) {
         const roleDef = ROLES.find(r => r.key === remainingMissing);
@@ -397,7 +476,8 @@ export function useTrainer(): TrainerState {
     if (!currentSentence) return;
 
     const { result: vResult, mistakes: currentMistakes } = validateAnswer(
-      currentSentence, splitIndices, chunkLabels, subLabels, includeBB
+      currentSentence, splitIndices, chunkLabels, subLabels, includeBB,
+      bijzinFunctieLabels, bijvBepLinks
     );
 
     setValidationResult(vResult);
@@ -452,8 +532,18 @@ export function useTrainer(): TrainerState {
 
     const correctChunkLabels: PlacementMap = {};
     const correctSubLabels: PlacementMap = {};
+    const correctBijzinFunctieLabels: PlacementMap = {};
+    const correctBijvBepLinks: Record<string, string> = {};
     let currentChunkStartId = currentSentence.tokens[0].id;
     correctChunkLabels[currentChunkStartId] = currentSentence.tokens[0].role;
+    if (currentSentence.tokens[0].bijzinFunctie) {
+      if (currentSentence.tokens[0].bijzinFunctie !== 'bijv_bep' || includeBB) {
+        correctBijzinFunctieLabels[currentChunkStartId] = currentSentence.tokens[0].bijzinFunctie;
+        if (currentSentence.tokens[0].bijvBepTarget) {
+          correctBijvBepLinks[currentChunkStartId] = currentSentence.tokens[0].bijvBepTarget;
+        }
+      }
+    }
 
     currentSentence.tokens.forEach((t, i) => {
       if (t.subRole) {
@@ -463,6 +553,14 @@ export function useTrainer(): TrainerState {
       if (correctSplits.has(i - 1)) {
          currentChunkStartId = t.id;
          correctChunkLabels[currentChunkStartId] = t.role;
+         if (t.bijzinFunctie) {
+           if (t.bijzinFunctie !== 'bijv_bep' || includeBB) {
+             correctBijzinFunctieLabels[currentChunkStartId] = t.bijzinFunctie;
+             if (t.bijvBepTarget) {
+               correctBijvBepLinks[currentChunkStartId] = t.bijvBepTarget;
+             }
+           }
+         }
       }
     });
 
@@ -476,6 +574,9 @@ export function useTrainer(): TrainerState {
 
     setChunkLabels(correctChunkLabels);
     setSubLabels(correctSubLabels);
+    setBijzinFunctieLabels(correctBijzinFunctieLabels);
+    setBijvBepLinks(correctBijvBepLinks);
+    setLinkingBijvBepId(null);
     setShowAnswerMode(true);
     setValidationResult(null);
   };
@@ -518,7 +619,8 @@ export function useTrainer(): TrainerState {
 
     // Trainer
     currentSentence, step,
-    splitIndices, chunkLabels, subLabels,
+    splitIndices, chunkLabels, subLabels, bijzinFunctieLabels,
+    bijvBepLinks, linkingBijvBepId,
     validationResult, showAnswerMode,
     hintMessage, confirmAction, setConfirmAction,
 
@@ -540,6 +642,8 @@ export function useTrainer(): TrainerState {
     handleNextStep, handleBackStep,
     handleDragStart, handleDropChunk, handleDropWord,
     removeLabel, removeSubLabel,
+    handleDropBijzinFunctie, removeBijzinFunctieLabel,
+    startBijvBepLinking, completeBijvBepLink, cancelBijvBepLinking, removeBijvBepLink,
     handleHint, handleCheck,
     handleShowAnswerRequest, handleAbortRequest,
     handleConfirmAction, resetToHome,

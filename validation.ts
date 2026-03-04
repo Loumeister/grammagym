@@ -1,4 +1,4 @@
-import { ROLES, FEEDBACK_MATRIX, FEEDBACK_STRUCTURE } from './constants';
+import { ROLES, FEEDBACK_MATRIX, FEEDBACK_STRUCTURE, FEEDBACK_SWAP, FEEDBACK_BIJZIN_FUNCTIE } from './constants';
 import { Sentence, PlacementMap, RoleKey, Token, ValidationState } from './types';
 
 export interface ChunkData {
@@ -97,13 +97,16 @@ export function getConsistentRole(tokens: Token[]): RoleKey | null {
 
 /**
  * Main validation function: checks user's splits and labels against the sentence data.
+ * Supports bijzin function validation and bijvBep link validation.
  */
 export function validateAnswer(
   sentence: Sentence,
   splitIndices: Set<number>,
   chunkLabels: PlacementMap,
   subLabels: PlacementMap,
-  includeBB: boolean
+  includeBB: boolean,
+  bijzinFunctieLabels?: PlacementMap,
+  bijvBepLinks?: Record<string, string>,
 ): { result: ValidationResult; mistakes: Record<string, number> } {
   const userChunks = buildUserChunks(sentence.tokens, splitIndices);
   const chunkStatus: Record<number, ValidationState> = {};
@@ -176,6 +179,68 @@ export function validateAnswer(
     }
   });
 
+  // --- Bijzin double-role detection: when a student labels a bijzin chunk with its function ---
+  // E.g. they put "LV" on a chunk that should be "Bijzin" (with function LV).
+  userChunks.forEach((chunk, idx) => {
+    if (chunkStatus[idx] !== 'incorrect-role') return;
+    const firstToken = chunk.tokens[0];
+    const expectedFunctie = firstToken.bijzinFunctie;
+    if (firstToken.role !== 'bijzin' || !expectedFunctie) return;
+    // Skip bijv_bep function swap detection when includeBB is off
+    if (expectedFunctie === 'bijv_bep' && !includeBB) return;
+    const userLabel = chunkLabels[firstToken.id];
+    if (userLabel === expectedFunctie) {
+      const functieName = ROLES.find(r => r.key === expectedFunctie)?.label || expectedFunctie;
+      chunkFeedback[idx] = FEEDBACK_SWAP.BIJZIN_HAS_FUNCTIE(functieName);
+      chunkStatus[idx] = 'warning';
+    }
+  });
+
+  // --- Bijzin function validation ---
+  let bijzinFunctieMismatch = false;
+  let bijvBepLinkMismatch = false;
+  if (bijzinFunctieLabels) {
+    userChunks.forEach((chunk, idx) => {
+      const firstToken = chunk.tokens[0];
+      const expectedFunctie = firstToken.bijzinFunctie;
+      if (!expectedFunctie) return;
+      // Skip bijv_bep function validation when includeBB is off
+      if (expectedFunctie === 'bijv_bep' && !includeBB) return;
+      const userLabel = chunkLabels[firstToken.id];
+      if (userLabel !== 'bijzin') return;
+      if (chunkStatus[idx] !== 'correct') return;
+
+      const userFunctie = bijzinFunctieLabels[firstToken.id];
+      if (userFunctie === expectedFunctie) {
+        // For bijv_bep, also validate the target link
+        if (expectedFunctie === 'bijv_bep' && firstToken.bijvBepTarget && bijvBepLinks) {
+          const userTarget = bijvBepLinks[firstToken.id];
+          if (userTarget !== firstToken.bijvBepTarget) {
+            bijvBepLinkMismatch = true;
+            if (!userTarget) {
+              chunkFeedback[idx] = "Goed! Wijs nu het woord aan waar deze bijzin bij hoort.";
+              chunkStatus[idx] = 'warning';
+            } else {
+              const expectedTarget = sentence.tokens.find(t => t.id === firstToken.bijvBepTarget);
+              chunkFeedback[idx] = `De bijzin hoort bij '${expectedTarget?.text || '?'}', niet het woord dat je hebt gekozen.`;
+              chunkStatus[idx] = 'warning';
+            }
+          }
+        }
+      } else {
+        bijzinFunctieMismatch = true;
+        if (!userFunctie) {
+          chunkFeedback[idx] = FEEDBACK_BIJZIN_FUNCTIE.MISSING;
+          chunkStatus[idx] = 'warning';
+        } else {
+          const expectedFunctieName = ROLES.find(r => r.key === expectedFunctie)?.label || expectedFunctie;
+          chunkFeedback[idx] = FEEDBACK_BIJZIN_FUNCTIE.WRONG(expectedFunctieName);
+          chunkStatus[idx] = 'warning';
+        }
+      }
+    });
+  }
+
   let subRoleMismatch = false;
   sentence.tokens.forEach(t => {
     const userSub = subLabels[t.id];
@@ -186,7 +251,7 @@ export function validateAnswer(
 
   const isSplitPerfect = correctChunksCount === userChunks.length;
   const realChunkCount = countRealChunks(sentence.tokens);
-  const isPerfect = isSplitPerfect && userChunks.length === realChunkCount && !subRoleMismatch;
+  const isPerfect = isSplitPerfect && userChunks.length === realChunkCount && !subRoleMismatch && !bijzinFunctieMismatch && !bijvBepLinkMismatch;
 
   return {
     result: {
