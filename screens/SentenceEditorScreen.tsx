@@ -325,6 +325,13 @@ export const SentenceEditorScreen: React.FC<SentenceEditorScreenProps> = ({ onBa
       errors.push('Bij NG-zinnen: geen Naamwoordelijk Gezegde (NG) benoemd.');
     }
 
+    // Bijzin function validation
+    chunks.forEach((_, i) => {
+      if (chunkLabels[i] === 'bijzin' && !bijzinFunctieLabels[i]) {
+        errors.push('Bijzin zonder functie. Sleep een zinsdeel (bijv. LV, BWB) naar de functierij van de bijzin.');
+      }
+    });
+
     return errors;
   };
 
@@ -707,6 +714,7 @@ export const SentenceEditorScreen: React.FC<SentenceEditorScreenProps> = ({ onBa
                   {t.text}
                   <span className="opacity-60 ml-1">{rd?.shortLabel}</span>
                   {t.subRole && <span className="opacity-50 ml-0.5">({ROLES.find(r => r.key === t.subRole)?.shortLabel})</span>}
+                  {t.bijzinFunctie && <span className="opacity-50 ml-0.5">[fn:{ROLES.find(r => r.key === t.bijzinFunctie)?.shortLabel}]</span>}
                   {t.newChunk && <span className="opacity-50 ml-0.5">[NC]</span>}
                 </span>
               );

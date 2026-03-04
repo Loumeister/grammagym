@@ -82,7 +82,8 @@ export const SentenceChunk: React.FC<SentenceChunkProps> = ({
 
   const chunkId = tokens[0].id;
 
-  // Show bijzin function row when chunk is labeled as bijzin and the chunk has a bijzinFunctie
+  // Show bijzin function row when the sentence data expects a bijzinFunctie for this chunk
+  // and the user has assigned 'bijzin' as the main chunk role
   const showBijzinFunctieRow = hasBijzinFunctie && assignedRole?.key === 'bijzin';
 
   const handleDragOverChunk = (e: React.DragEvent<HTMLDivElement>) => {

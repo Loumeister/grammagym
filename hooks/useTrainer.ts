@@ -474,8 +474,6 @@ export function useTrainer(): TrainerState {
       const startedTooLate = prevToken && prevToken.role === firstTokenRole && !chunkTokens[0].newChunk;
       const isValidSplit = isConsistentRole && !splitTooEarly && !startedTooLate && !missedInternalSplit;
 
-      const userLabel = chunkLabels[firstTokenId];
-
       if (!isValidSplit) {
         chunkStatus[idx] = 'incorrect-split';
         if (!isConsistentRole || missedInternalSplit) chunkFeedback[idx] = FEEDBACK_STRUCTURE.INCONSISTENT;
@@ -483,6 +481,7 @@ export function useTrainer(): TrainerState {
         else chunkFeedback[idx] = "De verdeling klopt niet.";
         currentMistakes['Verdeling'] = (currentMistakes['Verdeling'] || 0) + 1;
       } else {
+        const userLabel = chunkLabels[firstTokenId];
         if (userLabel === firstTokenRole) {
           chunkStatus[idx] = 'correct';
           correctChunksCount++;
