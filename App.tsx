@@ -89,6 +89,7 @@ export default function App() {
     <TrainerScreen
       currentSentence={trainer.currentSentence} step={trainer.step} mode={trainer.mode}
       splitIndices={trainer.splitIndices} chunkLabels={trainer.chunkLabels} subLabels={trainer.subLabels} bijzinFunctieLabels={trainer.bijzinFunctieLabels}
+      bijvBepLinks={trainer.bijvBepLinks} linkingBijvBepId={trainer.linkingBijvBepId}
       validationResult={trainer.validationResult} showAnswerMode={trainer.showAnswerMode} hintMessage={trainer.hintMessage}
       confirmAction={trainer.confirmAction} setConfirmAction={trainer.setConfirmAction}
       showHelp={trainer.showHelp} setShowHelp={trainer.setShowHelp}
@@ -103,6 +104,7 @@ export default function App() {
       handleDragStart={trainer.handleDragStart} handleDropChunk={trainer.handleDropChunk} handleDropWord={trainer.handleDropWord}
       removeLabel={trainer.removeLabel} removeSubLabel={trainer.removeSubLabel}
       handleDropBijzinFunctie={trainer.handleDropBijzinFunctie} removeBijzinFunctieLabel={trainer.removeBijzinFunctieLabel}
+      startBijvBepLinking={trainer.startBijvBepLinking} completeBijvBepLink={trainer.completeBijvBepLink} cancelBijvBepLinking={trainer.cancelBijvBepLinking} removeBijvBepLink={trainer.removeBijvBepLink}
       handleHint={trainer.handleHint} handleCheck={trainer.handleCheck}
       handleShowAnswerRequest={trainer.handleShowAnswerRequest} handleAbortRequest={trainer.handleAbortRequest} handleConfirmAction={trainer.handleConfirmAction}
       nextSessionSentence={trainer.nextSessionSentence}

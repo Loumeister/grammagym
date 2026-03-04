@@ -63,6 +63,8 @@ export interface TrainerState {
   chunkLabels: PlacementMap;
   subLabels: PlacementMap;
   bijzinFunctieLabels: PlacementMap;
+  bijvBepLinks: Record<string, string>; // sourceId -> targetTokenId (for bvb reference tracking)
+  linkingBijvBepId: string | null; // chunk/token ID currently in "linking mode"
   validationResult: ValidationResult | null;
   showAnswerMode: boolean;
   hintMessage: string | null;
@@ -101,6 +103,10 @@ export interface TrainerState {
   removeSubLabel: (tokenId: string) => void;
   handleDropBijzinFunctie: (e: React.DragEvent<HTMLDivElement>, chunkId: string) => void;
   removeBijzinFunctieLabel: (chunkId: string) => void;
+  startBijvBepLinking: (sourceId: string) => void;
+  completeBijvBepLink: (targetTokenId: string) => void;
+  cancelBijvBepLinking: () => void;
+  removeBijvBepLink: (sourceId: string) => void;
   handleHint: () => void;
   handleCheck: () => void;
   handleShowAnswerRequest: () => void;
@@ -154,6 +160,8 @@ export function useTrainer(): TrainerState {
   const [chunkLabels, setChunkLabels] = useState<PlacementMap>({});
   const [subLabels, setSubLabels] = useState<PlacementMap>({});
   const [bijzinFunctieLabels, setBijzinFunctieLabels] = useState<PlacementMap>({});
+  const [bijvBepLinks, setBijvBepLinks] = useState<Record<string, string>>({});
+  const [linkingBijvBepId, setLinkingBijvBepId] = useState<string | null>(null);
 
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [showAnswerMode, setShowAnswerMode] = useState(false);
@@ -234,6 +242,8 @@ export function useTrainer(): TrainerState {
     setChunkLabels({});
     setSubLabels({});
     setBijzinFunctieLabels({});
+    setBijvBepLinks({});
+    setLinkingBijvBepId(null);
     setValidationResult(null);
     setShowAnswerMode(false);
     setHintMessage(null);
@@ -410,6 +420,36 @@ export function useTrainer(): TrainerState {
     const newLabels = { ...bijzinFunctieLabels };
     delete newLabels[chunkId];
     setBijzinFunctieLabels(newLabels);
+    // Also remove any bvb link for this chunk
+    const newLinks = { ...bijvBepLinks };
+    delete newLinks[chunkId];
+    setBijvBepLinks(newLinks);
+    setValidationResult(null);
+    setHintMessage(null);
+  };
+
+  const startBijvBepLinking = (sourceId: string) => {
+    if (showAnswerMode) return;
+    setLinkingBijvBepId(sourceId);
+  };
+
+  const completeBijvBepLink = (targetTokenId: string) => {
+    if (!linkingBijvBepId) return;
+    setBijvBepLinks(prev => ({ ...prev, [linkingBijvBepId]: targetTokenId }));
+    setLinkingBijvBepId(null);
+    setValidationResult(null);
+    setHintMessage(null);
+  };
+
+  const cancelBijvBepLinking = () => {
+    setLinkingBijvBepId(null);
+  };
+
+  const removeBijvBepLink = (sourceId: string) => {
+    if (showAnswerMode) return;
+    const newLinks = { ...bijvBepLinks };
+    delete newLinks[sourceId];
+    setBijvBepLinks(newLinks);
     setValidationResult(null);
     setHintMessage(null);
   };
@@ -435,7 +475,10 @@ export function useTrainer(): TrainerState {
     for (const chunk of userChunks) {
       const firstToken = chunk.tokens[0];
       const userLabel = chunkLabels[firstToken.id];
-      if (userLabel === 'bijzin' && firstToken.bijzinFunctie && !bijzinFunctieLabels[firstToken.id]) {
+      const functie = firstToken.bijzinFunctie;
+      // Skip bijv_bep function requirement when includeBB is off
+      if (functie === 'bijv_bep' && !includeBB) continue;
+      if (userLabel === 'bijzin' && functie && !bijzinFunctieLabels[firstToken.id]) {
         setHintMessage(HINTS.MISSING_BIJZIN_FUNCTIE);
         return;
       }
@@ -513,6 +556,8 @@ export function useTrainer(): TrainerState {
       const firstToken = chunk.tokens[0];
       const expectedFunctie = firstToken.bijzinFunctie;
       if (firstToken.role !== 'bijzin' || !expectedFunctie) return;
+      // Skip bijv_bep function swap detection when includeBB is off
+      if (expectedFunctie === 'bijv_bep' && !includeBB) return;
       const userLabel = chunkLabels[firstToken.id];
       if (userLabel === expectedFunctie) {
         // Student labeled with the function (e.g. LV) instead of "Bijzin"
@@ -524,17 +569,35 @@ export function useTrainer(): TrainerState {
 
     // --- Bijzin function validation ---
     let bijzinFunctieMismatch = false;
+    let bijvBepLinkMismatch = false;
     userChunks.forEach((chunk, idx) => {
       const firstToken = chunk.tokens[0];
       const expectedFunctie = firstToken.bijzinFunctie;
       if (!expectedFunctie) return; // No bijzin function expected for this chunk
+      // Skip bijv_bep function validation when includeBB is off
+      if (expectedFunctie === 'bijv_bep' && !includeBB) return;
       const userLabel = chunkLabels[firstToken.id];
       if (userLabel !== 'bijzin') return; // Only validate when chunk is correctly labeled as bijzin
       if (chunkStatus[idx] !== 'correct') return; // Only validate bijzin function when chunk is otherwise correct
 
       const userFunctie = bijzinFunctieLabels[firstToken.id];
       if (userFunctie === expectedFunctie) {
-        // Both bijzin label and function are correct - already counted as correct
+        // Both bijzin label and function are correct
+        // For bijv_bep, also validate the target link
+        if (expectedFunctie === 'bijv_bep' && firstToken.bijvBepTarget) {
+          const userTarget = bijvBepLinks[firstToken.id];
+          if (userTarget !== firstToken.bijvBepTarget) {
+            bijvBepLinkMismatch = true;
+            if (!userTarget) {
+              chunkFeedback[idx] = "Goed! Klik nu op het woord waar deze bijzin naar verwijst.";
+              chunkStatus[idx] = 'warning';
+            } else {
+              const expectedTarget = currentSentence.tokens.find(t => t.id === firstToken.bijvBepTarget);
+              chunkFeedback[idx] = `De bijzin verwijst naar '${expectedTarget?.text || '?'}', niet het woord dat je hebt gekozen.`;
+              chunkStatus[idx] = 'warning';
+            }
+          }
+        }
       } else {
         bijzinFunctieMismatch = true;
         if (!userFunctie) {
@@ -561,7 +624,7 @@ export function useTrainer(): TrainerState {
     currentSentence.tokens.forEach((t, i) => {
         if (i === 0 || t.role !== currentSentence.tokens[i-1].role || t.newChunk) realChunkCount++;
     });
-    const reallyPerfect = isSplitPerfect && userChunks.length === realChunkCount && !subRoleMismatch && !bijzinFunctieMismatch;
+    const reallyPerfect = isSplitPerfect && userChunks.length === realChunkCount && !subRoleMismatch && !bijzinFunctieMismatch && !bijvBepLinkMismatch;
 
     setValidationResult({
       score: correctChunksCount,
@@ -624,10 +687,17 @@ export function useTrainer(): TrainerState {
     const correctChunkLabels: PlacementMap = {};
     const correctSubLabels: PlacementMap = {};
     const correctBijzinFunctieLabels: PlacementMap = {};
+    const correctBijvBepLinks: Record<string, string> = {};
     let currentChunkStartId = currentSentence.tokens[0].id;
     correctChunkLabels[currentChunkStartId] = currentSentence.tokens[0].role;
     if (currentSentence.tokens[0].bijzinFunctie) {
-      correctBijzinFunctieLabels[currentChunkStartId] = currentSentence.tokens[0].bijzinFunctie;
+      // Skip bijv_bep function when includeBB is off
+      if (currentSentence.tokens[0].bijzinFunctie !== 'bijv_bep' || includeBB) {
+        correctBijzinFunctieLabels[currentChunkStartId] = currentSentence.tokens[0].bijzinFunctie;
+        if (currentSentence.tokens[0].bijvBepTarget) {
+          correctBijvBepLinks[currentChunkStartId] = currentSentence.tokens[0].bijvBepTarget;
+        }
+      }
     }
 
     currentSentence.tokens.forEach((t, i) => {
@@ -639,7 +709,13 @@ export function useTrainer(): TrainerState {
          currentChunkStartId = t.id;
          correctChunkLabels[currentChunkStartId] = t.role;
          if (t.bijzinFunctie) {
-           correctBijzinFunctieLabels[currentChunkStartId] = t.bijzinFunctie;
+           // Skip bijv_bep function when includeBB is off
+           if (t.bijzinFunctie !== 'bijv_bep' || includeBB) {
+             correctBijzinFunctieLabels[currentChunkStartId] = t.bijzinFunctie;
+             if (t.bijvBepTarget) {
+               correctBijvBepLinks[currentChunkStartId] = t.bijvBepTarget;
+             }
+           }
          }
       }
     });
@@ -658,6 +734,8 @@ export function useTrainer(): TrainerState {
     setChunkLabels(correctChunkLabels);
     setSubLabels(correctSubLabels);
     setBijzinFunctieLabels(correctBijzinFunctieLabels);
+    setBijvBepLinks(correctBijvBepLinks);
+    setLinkingBijvBepId(null);
     setShowAnswerMode(true);
     setValidationResult(null);
   };
@@ -701,6 +779,7 @@ export function useTrainer(): TrainerState {
     // Trainer
     currentSentence, step,
     splitIndices, chunkLabels, subLabels, bijzinFunctieLabels,
+    bijvBepLinks, linkingBijvBepId,
     validationResult, showAnswerMode,
     hintMessage, confirmAction, setConfirmAction,
 
@@ -723,6 +802,7 @@ export function useTrainer(): TrainerState {
     handleDragStart, handleDropChunk, handleDropWord,
     removeLabel, removeSubLabel,
     handleDropBijzinFunctie, removeBijzinFunctieLabel,
+    startBijvBepLinking, completeBijvBepLink, cancelBijvBepLinking, removeBijvBepLink,
     handleHint, handleCheck,
     handleShowAnswerRequest, handleAbortRequest,
     handleConfirmAction, resetToHome,

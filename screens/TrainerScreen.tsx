@@ -10,6 +10,7 @@ import { TrainerState } from '../hooks/useTrainer';
 type TrainerScreenProps = Pick<TrainerState,
   | 'currentSentence' | 'step' | 'mode'
   | 'splitIndices' | 'chunkLabels' | 'subLabels' | 'bijzinFunctieLabels'
+  | 'bijvBepLinks' | 'linkingBijvBepId'
   | 'validationResult' | 'showAnswerMode' | 'hintMessage'
   | 'confirmAction' | 'setConfirmAction'
   | 'showHelp' | 'setShowHelp'
@@ -24,6 +25,7 @@ type TrainerScreenProps = Pick<TrainerState,
   | 'handleDragStart' | 'handleDropChunk' | 'handleDropWord'
   | 'removeLabel' | 'removeSubLabel'
   | 'handleDropBijzinFunctie' | 'removeBijzinFunctieLabel'
+  | 'startBijvBepLinking' | 'completeBijvBepLink' | 'cancelBijvBepLinking' | 'removeBijvBepLink'
   | 'handleHint' | 'handleCheck'
   | 'handleShowAnswerRequest' | 'handleAbortRequest' | 'handleConfirmAction'
   | 'nextSessionSentence'
@@ -32,6 +34,7 @@ type TrainerScreenProps = Pick<TrainerState,
 export const TrainerScreen: React.FC<TrainerScreenProps> = ({
   currentSentence, step, mode,
   splitIndices, chunkLabels, subLabels, bijzinFunctieLabels,
+  bijvBepLinks, linkingBijvBepId,
   validationResult, showAnswerMode, hintMessage,
   confirmAction, setConfirmAction,
   showHelp, setShowHelp,
@@ -46,6 +49,7 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
   handleDragStart, handleDropChunk, handleDropWord,
   removeLabel, removeSubLabel,
   handleDropBijzinFunctie, removeBijzinFunctieLabel,
+  startBijvBepLinking, completeBijvBepLink, cancelBijvBepLinking, removeBijvBepLink,
   handleHint, handleCheck,
   handleShowAnswerRequest, handleAbortRequest, handleConfirmAction,
   nextSessionSentence,
@@ -162,6 +166,17 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                 />
               )}
 
+              {/* Banner for bijv_bep linking mode */}
+              {linkingBijvBepId && (
+                <div className="w-full flex items-center justify-center gap-3 px-4 py-2 bg-teal-50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-700 rounded-lg text-sm text-teal-700 dark:text-teal-300">
+                  <span>Klik op het woord waar de bijzin naar verwijst</span>
+                  <button
+                    onClick={cancelBijvBepLinking}
+                    className="px-2 py-0.5 text-xs rounded bg-teal-100 dark:bg-teal-800 hover:bg-teal-200 dark:hover:bg-teal-700 transition-colors"
+                  >Annuleren</button>
+                </div>
+              )}
+
               <div className="flex flex-wrap gap-y-6 gap-x-2 justify-center items-start pt-2 px-1 flex-1 content-start">
                 {userChunks.map((chunk, idx) => {
                   const startTokenId = chunk.tokens[0].id;
@@ -169,7 +184,13 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                   const roleDef = assignedRoleKey ? ROLES.find(r => r.key === assignedRoleKey) || null : null;
                   const bijzinFunctieKey = bijzinFunctieLabels[startTokenId];
                   const bijzinFunctieDef = bijzinFunctieKey ? ROLES.find(r => r.key === bijzinFunctieKey) || null : null;
-                  const hasBijzinFunctie = !!chunk.tokens[0].bijzinFunctie;
+                  const rawFunctie = chunk.tokens[0].bijzinFunctie;
+                  // Gate bijv_bep function behind includeBB
+                  const hasBijzinFunctie = !!rawFunctie && (rawFunctie !== 'bijv_bep' || includeBB);
+                  // Resolve bvb link target text
+                  const bijvBepTargetId = bijvBepLinks[startTokenId];
+                  const bijvBepTargetToken = bijvBepTargetId ? currentSentence.tokens.find(t => t.id === bijvBepTargetId) : null;
+                  const bijvBepTargetText = bijvBepTargetToken?.text || null;
                   const chunkSubRoles: Record<string, RoleDefinition> = {};
                   chunk.tokens.forEach(t => {
                     if (subLabels[t.id]) {
@@ -187,6 +208,7 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                         startIndex={chunk.originalIndices[0]}
                         assignedRole={roleDef}
                         assignedBijzinFunctie={bijzinFunctieDef}
+                        bijvBepTargetText={bijvBepTargetText}
                         subRoles={chunkSubRoles}
                         onDropChunk={handleDropChunk}
                         onDropBijzinFunctie={handleDropBijzinFunctie}
@@ -195,7 +217,12 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                         onRemoveBijzinFunctie={removeBijzinFunctieLabel}
                         onRemoveSubRole={removeSubLabel}
                         onToggleSplit={toggleSplit}
+                        onStartBijvBepLinking={startBijvBepLinking}
+                        onRemoveBijvBepLink={removeBijvBepLink}
+                        onWordClick={completeBijvBepLink}
                         hasBijzinFunctie={hasBijzinFunctie}
+                        isLinkingMode={!!linkingBijvBepId}
+                        isLinkingSource={linkingBijvBepId === startTokenId}
                         validationState={validationResult?.chunkStatus[idx]}
                         feedbackMessage={validationResult?.chunkFeedback[idx]}
                         isLargeFont={largeFont}
