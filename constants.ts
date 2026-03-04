@@ -211,11 +211,22 @@ export const FEEDBACK_MATRIX: Record<string, Record<string, string>> = {
   }
 };
 
+export const FEEDBACK_SWAP = {
+  BIJZIN_HAS_FUNCTIE: (functieName: string) =>
+    `Goed gezien! Dit zinsdeel is inderdaad ${functieName}, maar het is een bijzin. Gebruik 'Bijzin' als hoofdlabel en sleep '${functieName}' naar de functierij.`,
+};
+
+export const FEEDBACK_BIJZIN_FUNCTIE = {
+  MISSING: "Goed! Dit is een bijzin. Welke functie heeft deze bijzin in de zin?",
+  WRONG: (expected: string) => `De bijzin klopt, maar de functie niet. Deze bijzin is ${expected}.`,
+};
+
 export const HINTS = {
   MISSING_PV: "Tip: Zoek eerst de persoonsvorm. Doe de tijds- of getalsproef.",
   MISSING_OW: "Tip: Zoek het onderwerp. Vraag: Wie of wat + persoonsvorm?",
   MISSING_WG: "Tip: Maak het gezegde compleet. Welke andere werkwoorden staan er in de zin?",
   MISSING_NG: "Tip: Dit is een zin met een koppelwerkwoord. Zoek het Naamwoordelijk Gezegde (wat wordt er gezegd over het onderwerp?).",
   MISSING_LV: "Tip: Is er een Lijdend Voorwerp? Vraag: Wie of wat + gezegde + onderwerp?",
+  MISSING_BIJZIN_FUNCTIE: "Tip: Deze bijzin heeft ook een functie in de zin. Sleep een zinsdeel (bijv. LV, BWB) op de tweede rij.",
   generic: (roleLabel: string) => `Tip: Probeer het zinsdeel '${roleLabel}' te vinden.`
 };
