@@ -68,9 +68,7 @@ export function computeCorrectSplits(tokens: Token[]): Set<number> {
  * considering the primary role and any acceptable alternativeRole.
  */
 export function roleMatchesToken(userLabel: RoleKey, token: Token): boolean {
-  if (userLabel === token.role) return true;
-  if (token.alternativeRole && userLabel === token.alternativeRole) return true;
-  return false;
+  return userLabel === token.role || (token.alternativeRole !== undefined && userLabel === token.alternativeRole);
 }
 
 /**
@@ -95,13 +93,6 @@ export function getConsistentRole(tokens: Token[]): RoleKey | null {
   if (firstAlt && tokens.every(t => t.role === firstAlt || t.alternativeRole === firstAlt)) return firstAlt;
 
   return null;
-}
-
-/**
- * Check whether a given role is compatible with a token (primary or alternative).
- */
-function tokenAllowsRole(token: Token, role: RoleKey): boolean {
-  return token.role === role || token.alternativeRole === role;
 }
 
 /**
@@ -136,14 +127,14 @@ export function validateAnswer(
 
     // Split too early: next token shares a role with this chunk (primary or alt) and no newChunk
     const splitTooEarly = nextToken && !nextToken.newChunk &&
-      consistentRole !== null && tokenAllowsRole(nextToken, consistentRole);
+      consistentRole !== null && roleMatchesToken(consistentRole, nextToken);
 
     const firstTokenIndexInSent = sentence.tokens.findIndex(t => t.id === firstTokenId);
     const prevToken = sentence.tokens[firstTokenIndexInSent - 1];
 
     // Started too late: previous token shares a role with this chunk and no newChunk on first token
     const startedTooLate = prevToken && !chunkTokens[0].newChunk &&
-      consistentRole !== null && tokenAllowsRole(prevToken, consistentRole);
+      consistentRole !== null && roleMatchesToken(consistentRole, prevToken);
 
     const isValidSplit = isConsistentRole && !splitTooEarly && !startedTooLate && !missedInternalSplit;
 
@@ -155,7 +146,7 @@ export function validateAnswer(
       currentMistakes['Verdeling'] = (currentMistakes['Verdeling'] || 0) + 1;
     } else {
       const userLabel = chunkLabels[firstTokenId];
-      // The effective correct role is the consistent role of the chunk
+      // Safe: isValidSplit is true only when isConsistentRole is true, which means consistentRole !== null
       const effectiveRole = consistentRole!;
 
       if (userLabel === effectiveRole) {

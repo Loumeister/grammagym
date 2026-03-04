@@ -92,6 +92,13 @@ export const UsageLogScreen: React.FC<UsageLogScreenProps> = ({ onBack }) => {
     }
   };
 
+  const handleClearData = () => {
+    if (confirm('Alle gebruiksdata wissen? Dit kan niet ongedaan worden.')) {
+      clearUsageData();
+      setEnrichedData([]);
+    }
+  };
+
   if (!authenticated) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4">
@@ -194,7 +201,7 @@ export const UsageLogScreen: React.FC<UsageLogScreenProps> = ({ onBack }) => {
               <button onClick={() => exportUsageDataAsJson(usageStore)} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors">
                 Exporteer JSON
               </button>
-              <button onClick={() => { if (confirm('Alle gebruiksdata wissen? Dit kan niet ongedaan worden.')) { clearUsageData(); setEnrichedData([]); } }} className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors">
+              <button onClick={handleClearData} className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors">
                 Wis data
               </button>
               <button onClick={onBack} className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
