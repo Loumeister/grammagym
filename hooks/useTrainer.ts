@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ROLES, FEEDBACK_MATRIX, FEEDBACK_STRUCTURE, HINTS } from '../constants';
+import { ROLES, FEEDBACK_MATRIX, FEEDBACK_STRUCTURE, FEEDBACK_SWAP, FEEDBACK_BIJZIN_FUNCTIE, HINTS } from '../constants';
 import { Sentence, PlacementMap, RoleKey, Token, DifficultyLevel, ValidationState } from '../types';
 import { useSentences } from './useSentences';
 import { getCustomSentences } from '../data/customSentenceStore';
@@ -62,6 +62,7 @@ export interface TrainerState {
   splitIndices: Set<number>;
   chunkLabels: PlacementMap;
   subLabels: PlacementMap;
+  bijzinFunctieLabels: PlacementMap;
   validationResult: ValidationResult | null;
   showAnswerMode: boolean;
   hintMessage: string | null;
@@ -98,6 +99,8 @@ export interface TrainerState {
   handleDropWord: (e: React.DragEvent<HTMLSpanElement>, tokenId: string) => void;
   removeLabel: (chunkId: string) => void;
   removeSubLabel: (tokenId: string) => void;
+  handleDropBijzinFunctie: (e: React.DragEvent<HTMLDivElement>, chunkId: string) => void;
+  removeBijzinFunctieLabel: (chunkId: string) => void;
   handleHint: () => void;
   handleCheck: () => void;
   handleShowAnswerRequest: () => void;
@@ -150,6 +153,7 @@ export function useTrainer(): TrainerState {
   // Labeling State
   const [chunkLabels, setChunkLabels] = useState<PlacementMap>({});
   const [subLabels, setSubLabels] = useState<PlacementMap>({});
+  const [bijzinFunctieLabels, setBijzinFunctieLabels] = useState<PlacementMap>({});
 
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [showAnswerMode, setShowAnswerMode] = useState(false);
@@ -229,6 +233,7 @@ export function useTrainer(): TrainerState {
     setSplitIndices(new Set());
     setChunkLabels({});
     setSubLabels({});
+    setBijzinFunctieLabels({});
     setValidationResult(null);
     setShowAnswerMode(false);
     setHintMessage(null);
@@ -389,6 +394,26 @@ export function useTrainer(): TrainerState {
     setHintMessage(null);
   };
 
+  const handleDropBijzinFunctie = (e: React.DragEvent<HTMLDivElement>, chunkId: string) => {
+    e.preventDefault();
+    if (showAnswerMode) return;
+    const roleKey = e.dataTransfer.getData("text/role") as RoleKey;
+    if (roleKey) {
+      setBijzinFunctieLabels(prev => ({ ...prev, [chunkId]: roleKey }));
+      setValidationResult(null);
+      setHintMessage(null);
+    }
+  };
+
+  const removeBijzinFunctieLabel = (chunkId: string) => {
+    if (showAnswerMode) return;
+    const newLabels = { ...bijzinFunctieLabels };
+    delete newLabels[chunkId];
+    setBijzinFunctieLabels(newLabels);
+    setValidationResult(null);
+    setHintMessage(null);
+  };
+
   const handleHint = () => {
     if (!currentSentence) return;
 
@@ -404,6 +429,17 @@ export function useTrainer(): TrainerState {
     if (actualRolesInSentence.has('wg') && !usedRoles.includes('wg')) { setHintMessage(HINTS.MISSING_WG); return; }
     if (actualRolesInSentence.has('nwd') && !usedRoles.includes('nwd')) { setHintMessage(HINTS.MISSING_NG); return; }
     if (actualRolesInSentence.has('lv') && !usedRoles.includes('lv')) { setHintMessage(HINTS.MISSING_LV); return; }
+
+    // Check for missing bijzin function labels
+    const userChunks = getUserChunks();
+    for (const chunk of userChunks) {
+      const firstToken = chunk.tokens[0];
+      const userLabel = chunkLabels[firstToken.id];
+      if (userLabel === 'bijzin' && firstToken.bijzinFunctie && !bijzinFunctieLabels[firstToken.id]) {
+        setHintMessage(HINTS.MISSING_BIJZIN_FUNCTIE);
+        return;
+      }
+    }
 
     const remainingMissing = Array.from(actualRolesInSentence).find(r => !usedRoles.includes(r));
     if (remainingMissing) {
@@ -438,6 +474,8 @@ export function useTrainer(): TrainerState {
       const startedTooLate = prevToken && prevToken.role === firstTokenRole && !chunkTokens[0].newChunk;
       const isValidSplit = isConsistentRole && !splitTooEarly && !startedTooLate && !missedInternalSplit;
 
+      const userLabel = chunkLabels[firstTokenId];
+
       if (!isValidSplit) {
         chunkStatus[idx] = 'incorrect-split';
         if (!isConsistentRole || missedInternalSplit) chunkFeedback[idx] = FEEDBACK_STRUCTURE.INCONSISTENT;
@@ -445,7 +483,6 @@ export function useTrainer(): TrainerState {
         else chunkFeedback[idx] = "De verdeling klopt niet.";
         currentMistakes['Verdeling'] = (currentMistakes['Verdeling'] || 0) + 1;
       } else {
-        const userLabel = chunkLabels[firstTokenId];
         if (userLabel === firstTokenRole) {
           chunkStatus[idx] = 'correct';
           correctChunksCount++;
@@ -469,6 +506,49 @@ export function useTrainer(): TrainerState {
       }
     });
 
+    // --- Bijzin double-role detection: when a student labels a bijzin chunk with its function ---
+    // E.g. they put "LV" on a chunk that should be "Bijzin" (with function LV).
+    // This is a UI/UX confusion, not a grammatical error, so give specific guidance.
+    userChunks.forEach((chunk, idx) => {
+      if (chunkStatus[idx] !== 'incorrect-role') return;
+      const firstToken = chunk.tokens[0];
+      const expectedFunctie = firstToken.bijzinFunctie;
+      if (firstToken.role !== 'bijzin' || !expectedFunctie) return;
+      const userLabel = chunkLabels[firstToken.id];
+      if (userLabel === expectedFunctie) {
+        // Student labeled with the function (e.g. LV) instead of "Bijzin"
+        const functieName = ROLES.find(r => r.key === expectedFunctie)?.label || expectedFunctie;
+        chunkFeedback[idx] = FEEDBACK_SWAP.BIJZIN_HAS_FUNCTIE(functieName);
+        chunkStatus[idx] = 'warning';
+      }
+    });
+
+    // --- Bijzin function validation ---
+    let bijzinFunctieMismatch = false;
+    userChunks.forEach((chunk, idx) => {
+      const firstToken = chunk.tokens[0];
+      const expectedFunctie = firstToken.bijzinFunctie;
+      if (!expectedFunctie) return; // No bijzin function expected for this chunk
+      const userLabel = chunkLabels[firstToken.id];
+      if (userLabel !== 'bijzin') return; // Only validate when chunk is correctly labeled as bijzin
+      if (chunkStatus[idx] !== 'correct') return; // Only validate bijzin function when chunk is otherwise correct
+
+      const userFunctie = bijzinFunctieLabels[firstToken.id];
+      if (userFunctie === expectedFunctie) {
+        // Both bijzin label and function are correct - already counted as correct
+      } else {
+        bijzinFunctieMismatch = true;
+        if (!userFunctie) {
+          chunkFeedback[idx] = FEEDBACK_BIJZIN_FUNCTIE.MISSING;
+          chunkStatus[idx] = 'warning';
+        } else {
+          const expectedFunctieName = ROLES.find(r => r.key === expectedFunctie)?.label || expectedFunctie;
+          chunkFeedback[idx] = FEEDBACK_BIJZIN_FUNCTIE.WRONG(expectedFunctieName);
+          chunkStatus[idx] = 'warning';
+        }
+      }
+    });
+
     let subRoleMismatch = false;
     currentSentence.tokens.forEach(t => {
        const userSub = subLabels[t.id];
@@ -482,7 +562,7 @@ export function useTrainer(): TrainerState {
     currentSentence.tokens.forEach((t, i) => {
         if (i === 0 || t.role !== currentSentence.tokens[i-1].role || t.newChunk) realChunkCount++;
     });
-    const reallyPerfect = isSplitPerfect && userChunks.length === realChunkCount && !subRoleMismatch;
+    const reallyPerfect = isSplitPerfect && userChunks.length === realChunkCount && !subRoleMismatch && !bijzinFunctieMismatch;
 
     setValidationResult({
       score: correctChunksCount,
@@ -544,8 +624,12 @@ export function useTrainer(): TrainerState {
 
     const correctChunkLabels: PlacementMap = {};
     const correctSubLabels: PlacementMap = {};
+    const correctBijzinFunctieLabels: PlacementMap = {};
     let currentChunkStartId = currentSentence.tokens[0].id;
     correctChunkLabels[currentChunkStartId] = currentSentence.tokens[0].role;
+    if (currentSentence.tokens[0].bijzinFunctie) {
+      correctBijzinFunctieLabels[currentChunkStartId] = currentSentence.tokens[0].bijzinFunctie;
+    }
 
     currentSentence.tokens.forEach((t, i) => {
       if (t.subRole) {
@@ -555,6 +639,9 @@ export function useTrainer(): TrainerState {
       if (correctSplits.has(i - 1)) {
          currentChunkStartId = t.id;
          correctChunkLabels[currentChunkStartId] = t.role;
+         if (t.bijzinFunctie) {
+           correctBijzinFunctieLabels[currentChunkStartId] = t.bijzinFunctie;
+         }
       }
     });
 
@@ -571,6 +658,7 @@ export function useTrainer(): TrainerState {
 
     setChunkLabels(correctChunkLabels);
     setSubLabels(correctSubLabels);
+    setBijzinFunctieLabels(correctBijzinFunctieLabels);
     setShowAnswerMode(true);
     setValidationResult(null);
   };
@@ -613,7 +701,7 @@ export function useTrainer(): TrainerState {
 
     // Trainer
     currentSentence, step,
-    splitIndices, chunkLabels, subLabels,
+    splitIndices, chunkLabels, subLabels, bijzinFunctieLabels,
     validationResult, showAnswerMode,
     hintMessage, confirmAction, setConfirmAction,
 
@@ -635,6 +723,7 @@ export function useTrainer(): TrainerState {
     handleNextStep, handleBackStep,
     handleDragStart, handleDropChunk, handleDropWord,
     removeLabel, removeSubLabel,
+    handleDropBijzinFunctie, removeBijzinFunctieLabel,
     handleHint, handleCheck,
     handleShowAnswerRequest, handleAbortRequest,
     handleConfirmAction, resetToHome,

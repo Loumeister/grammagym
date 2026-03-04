@@ -9,7 +9,7 @@ import { TrainerState } from '../hooks/useTrainer';
 
 type TrainerScreenProps = Pick<TrainerState,
   | 'currentSentence' | 'step' | 'mode'
-  | 'splitIndices' | 'chunkLabels' | 'subLabels'
+  | 'splitIndices' | 'chunkLabels' | 'subLabels' | 'bijzinFunctieLabels'
   | 'validationResult' | 'showAnswerMode' | 'hintMessage'
   | 'confirmAction' | 'setConfirmAction'
   | 'showHelp' | 'setShowHelp'
@@ -23,6 +23,7 @@ type TrainerScreenProps = Pick<TrainerState,
   | 'toggleSplit' | 'handleNextStep' | 'handleBackStep'
   | 'handleDragStart' | 'handleDropChunk' | 'handleDropWord'
   | 'removeLabel' | 'removeSubLabel'
+  | 'handleDropBijzinFunctie' | 'removeBijzinFunctieLabel'
   | 'handleHint' | 'handleCheck'
   | 'handleShowAnswerRequest' | 'handleAbortRequest' | 'handleConfirmAction'
   | 'nextSessionSentence'
@@ -30,7 +31,7 @@ type TrainerScreenProps = Pick<TrainerState,
 
 export const TrainerScreen: React.FC<TrainerScreenProps> = ({
   currentSentence, step, mode,
-  splitIndices, chunkLabels, subLabels,
+  splitIndices, chunkLabels, subLabels, bijzinFunctieLabels,
   validationResult, showAnswerMode, hintMessage,
   confirmAction, setConfirmAction,
   showHelp, setShowHelp,
@@ -44,6 +45,7 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
   toggleSplit, handleNextStep, handleBackStep,
   handleDragStart, handleDropChunk, handleDropWord,
   removeLabel, removeSubLabel,
+  handleDropBijzinFunctie, removeBijzinFunctieLabel,
   handleHint, handleCheck,
   handleShowAnswerRequest, handleAbortRequest, handleConfirmAction,
   nextSessionSentence,
@@ -165,6 +167,9 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                   const startTokenId = chunk.tokens[0].id;
                   const assignedRoleKey = chunkLabels[startTokenId];
                   const roleDef = assignedRoleKey ? ROLES.find(r => r.key === assignedRoleKey) || null : null;
+                  const bijzinFunctieKey = bijzinFunctieLabels[startTokenId];
+                  const bijzinFunctieDef = bijzinFunctieKey ? ROLES.find(r => r.key === bijzinFunctieKey) || null : null;
+                  const hasBijzinFunctie = !!chunk.tokens[0].bijzinFunctie;
                   const chunkSubRoles: Record<string, RoleDefinition> = {};
                   chunk.tokens.forEach(t => {
                     if (subLabels[t.id]) {
@@ -181,12 +186,16 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                         tokens={chunk.tokens}
                         startIndex={chunk.originalIndices[0]}
                         assignedRole={roleDef}
+                        assignedBijzinFunctie={bijzinFunctieDef}
                         subRoles={chunkSubRoles}
                         onDropChunk={handleDropChunk}
+                        onDropBijzinFunctie={handleDropBijzinFunctie}
                         onDropWord={handleDropWord}
                         onRemoveRole={removeLabel}
+                        onRemoveBijzinFunctie={removeBijzinFunctieLabel}
                         onRemoveSubRole={removeSubLabel}
                         onToggleSplit={toggleSplit}
+                        hasBijzinFunctie={hasBijzinFunctie}
                         validationState={validationResult?.chunkStatus[idx]}
                         feedbackMessage={validationResult?.chunkFeedback[idx]}
                         isLargeFont={largeFont}

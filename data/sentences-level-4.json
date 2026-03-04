@@ -9,7 +9,8 @@
         "id": "c1t1",
         "text": "Omdat",
         "role": "bijzin",
-        "subRole": "vw_onder"
+        "subRole": "vw_onder",
+        "bijzinFunctie": "bwb"
       },
       {
         "id": "c1t2",
@@ -95,7 +96,8 @@
         "id": "c2t8",
         "text": "omdat",
         "role": "bijzin",
-        "subRole": "vw_onder"
+        "subRole": "vw_onder",
+        "bijzinFunctie": "bwb"
       },
       {
         "id": "c2t9",
@@ -304,7 +306,8 @@
         "id": "c5t6",
         "text": "daardoor",
         "role": "bijzin",
-        "subRole": "vw_onder"
+        "subRole": "vw_onder",
+        "bijzinFunctie": "bwb"
       },
       {
         "id": "c5t7",
@@ -338,7 +341,8 @@
         "id": "c6t1",
         "text": "Terwijl",
         "role": "bijzin",
-        "subRole": "vw_onder"
+        "subRole": "vw_onder",
+        "bijzinFunctie": "bwb"
       },
       {
         "id": "c6t2",
@@ -458,7 +462,8 @@
         "id": "c7t11",
         "text": "waardoor",
         "role": "bijzin",
-        "subRole": "vw_onder"
+        "subRole": "vw_onder",
+        "bijzinFunctie": "bwb"
       },
       {
         "id": "c7t12",
@@ -492,7 +497,8 @@
         "id": "c8t1",
         "text": "Toen",
         "role": "bijzin",
-        "subRole": "vw_onder"
+        "subRole": "vw_onder",
+        "bijzinFunctie": "bwb"
       },
       {
         "id": "c8t2",

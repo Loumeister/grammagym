@@ -88,7 +88,7 @@ export default function App() {
   return (
     <TrainerScreen
       currentSentence={trainer.currentSentence} step={trainer.step} mode={trainer.mode}
-      splitIndices={trainer.splitIndices} chunkLabels={trainer.chunkLabels} subLabels={trainer.subLabels}
+      splitIndices={trainer.splitIndices} chunkLabels={trainer.chunkLabels} subLabels={trainer.subLabels} bijzinFunctieLabels={trainer.bijzinFunctieLabels}
       validationResult={trainer.validationResult} showAnswerMode={trainer.showAnswerMode} hintMessage={trainer.hintMessage}
       confirmAction={trainer.confirmAction} setConfirmAction={trainer.setConfirmAction}
       showHelp={trainer.showHelp} setShowHelp={trainer.setShowHelp}
@@ -102,6 +102,7 @@ export default function App() {
       toggleSplit={trainer.toggleSplit} handleNextStep={trainer.handleNextStep} handleBackStep={trainer.handleBackStep}
       handleDragStart={trainer.handleDragStart} handleDropChunk={trainer.handleDropChunk} handleDropWord={trainer.handleDropWord}
       removeLabel={trainer.removeLabel} removeSubLabel={trainer.removeSubLabel}
+      handleDropBijzinFunctie={trainer.handleDropBijzinFunctie} removeBijzinFunctieLabel={trainer.removeBijzinFunctieLabel}
       handleHint={trainer.handleHint} handleCheck={trainer.handleCheck}
       handleShowAnswerRequest={trainer.handleShowAnswerRequest} handleAbortRequest={trainer.handleAbortRequest} handleConfirmAction={trainer.handleConfirmAction}
       nextSessionSentence={trainer.nextSessionSentence}

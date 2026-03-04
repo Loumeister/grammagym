@@ -7,12 +7,16 @@ interface SentenceChunkProps {
   tokens: Token[];
   startIndex: number; // Global index of the first token in this chunk
   assignedRole: RoleDefinition | null;
+  assignedBijzinFunctie: RoleDefinition | null;
   subRoles: Record<string, RoleDefinition>; // Map tokenId -> RoleDefinition
   onDropChunk: (e: React.DragEvent<HTMLDivElement>, chunkId: string) => void;
+  onDropBijzinFunctie: (e: React.DragEvent<HTMLDivElement>, chunkId: string) => void;
   onDropWord: (e: React.DragEvent<HTMLSpanElement>, tokenId: string) => void;
   onRemoveRole: (chunkId: string) => void;
+  onRemoveBijzinFunctie: (chunkId: string) => void;
   onRemoveSubRole: (tokenId: string) => void;
   onToggleSplit: (globalTokenIndex: number) => void;
+  hasBijzinFunctie: boolean; // Whether this chunk expects a bijzin function
   validationState?: ValidationState;
   feedbackMessage?: string | null;
   isLargeFont?: boolean;
@@ -22,17 +26,22 @@ export const SentenceChunk: React.FC<SentenceChunkProps> = ({
   tokens,
   startIndex,
   assignedRole,
+  assignedBijzinFunctie,
   subRoles,
   onDropChunk,
+  onDropBijzinFunctie,
   onDropWord,
   onRemoveRole,
+  onRemoveBijzinFunctie,
   onRemoveSubRole,
   onToggleSplit,
+  hasBijzinFunctie,
   validationState,
   feedbackMessage,
   isLargeFont = false
 }) => {
   const [isOverChunk, setIsOverChunk] = useState(false);
+  const [isOverBijzinFunctie, setIsOverBijzinFunctie] = useState(false);
   const [hoveredWordId, setHoveredWordId] = useState<string | null>(null);
   const [dismissedFeedback, setDismissedFeedback] = useState(false);
 
@@ -72,6 +81,9 @@ export const SentenceChunk: React.FC<SentenceChunkProps> = ({
   }
 
   const chunkId = tokens[0].id;
+
+  // Show bijzin function row when chunk is labeled as bijzin and the chunk has a bijzinFunctie
+  const showBijzinFunctieRow = hasBijzinFunctie && assignedRole?.key === 'bijzin';
 
   const handleDragOverChunk = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -153,6 +165,49 @@ export const SentenceChunk: React.FC<SentenceChunkProps> = ({
           "Sleep zinsdeel hier"
         )}
       </div>
+
+      {/* Bijzin Function Row - shown when chunk is labeled as bijzin and has a function */}
+      {showBijzinFunctieRow && (
+        <div
+          className={`
+            h-8 border-b border-dashed border-slate-200 dark:border-slate-600 flex items-center justify-center text-[11px] cursor-pointer transition-all
+            ${isOverBijzinFunctie ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-400 dark:border-blue-500' : ''}
+            ${assignedBijzinFunctie ? assignedBijzinFunctie.colorClass + ' font-bold hover:opacity-80' : 'text-slate-400 dark:text-slate-500 italic'}
+          `}
+          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsOverBijzinFunctie(true); setIsOverChunk(false); }}
+          onDragLeave={() => setIsOverBijzinFunctie(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsOverBijzinFunctie(false);
+            onDropBijzinFunctie(e, chunkId);
+          }}
+          onClick={(e) => {
+            if (assignedBijzinFunctie && !validationState) {
+              e.stopPropagation();
+              onRemoveBijzinFunctie(chunkId);
+            }
+          }}
+        >
+          {assignedBijzinFunctie ? (
+            <div className="flex items-center gap-2 w-full justify-center px-2 relative group/functie">
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 mr-1">functie:</span>
+              <span className="relative z-10">{assignedBijzinFunctie.label}</span>
+              {!validationState && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onRemoveBijzinFunctie(chunkId); }}
+                  className="hidden group-hover/functie:flex absolute right-0 hover:bg-black/10 dark:hover:bg-white/10 rounded-full w-4 h-4 items-center justify-center transition-colors z-20 text-[10px]"
+                  title="Verwijder functie"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          ) : (
+            <span className="text-[10px]">Sleep functie hier (bijv. LV, BWB)</span>
+          )}
+        </div>
+      )}
 
       {/* Words Container */}
       <div className={`

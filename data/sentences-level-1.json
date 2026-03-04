@@ -336,7 +336,8 @@
       {
         "id": "s21t3",
         "text": "waarom",
-        "role": "bijzin"
+        "role": "bijzin",
+        "bijzinFunctie": "lv"
       },
       {
         "id": "s21t4",
