@@ -10,6 +10,7 @@ export interface Token {
   role: RoleKey; // The main constituent role this word belongs to
   subRole?: RoleKey; // The internal role (e.g. bijv_bep inside an OW)
   newChunk?: boolean; // Explicitly marks the start of a new constituent, even if the role is the same as previous
+  bijzinFunctie?: RoleKey; // The grammatical function of a bijzin in the sentence (e.g. lv, bwb, ow)
 }
 
 export interface Sentence {
