@@ -1,26 +1,22 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ROLES, FEEDBACK_MATRIX, FEEDBACK_STRUCTURE, HINTS } from '../constants';
-import { Sentence, PlacementMap, RoleKey, Token, DifficultyLevel, ValidationState } from '../types';
+import { ROLES, HINTS } from '../constants';
+import { Sentence, PlacementMap, RoleKey, DifficultyLevel } from '../types';
 import { useSentences } from './useSentences';
 import { getCustomSentences } from '../data/customSentenceStore';
 import { recordAttempt, recordShowAnswer } from '../usageData';
+import {
+  buildUserChunks,
+  countRealChunks,
+  computeCorrectSplits,
+  validateAnswer,
+  ChunkData,
+  ValidationResult,
+} from '../validation';
 
+export type { ChunkData, ValidationResult };
 export type AppStep = 'split' | 'label';
 export type Mode = 'free' | 'session';
 export type PredicateMode = 'ALL' | 'WG' | 'NG';
-
-export interface ChunkData {
-  tokens: Token[];
-  originalIndices: number[];
-}
-
-export interface ValidationResult {
-  score: number;
-  total: number;
-  chunkStatus: Record<number, ValidationState>;
-  chunkFeedback: Record<number, string>;
-  isPerfect: boolean;
-}
 
 export interface TrainerState {
   // Config
@@ -324,24 +320,7 @@ export function useTrainer(): TrainerState {
 
   const getUserChunks = (): ChunkData[] => {
     if (!currentSentence) return [];
-    const chunks: ChunkData[] = [];
-    let currentChunkTokens: Token[] = [];
-    let currentChunkIndices: number[] = [];
-
-    currentSentence.tokens.forEach((token, index) => {
-      currentChunkTokens.push(token);
-      currentChunkIndices.push(index);
-
-      if (splitIndices.has(index) || index === currentSentence.tokens.length - 1) {
-        chunks.push({
-          tokens: currentChunkTokens,
-          originalIndices: currentChunkIndices
-        });
-        currentChunkTokens = [];
-        currentChunkIndices = [];
-      }
-    });
-    return chunks;
+    return buildUserChunks(currentSentence.tokens, splitIndices);
   };
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, roleKey: string) => {
@@ -417,87 +396,20 @@ export function useTrainer(): TrainerState {
   const handleCheck = () => {
     if (!currentSentence) return;
 
-    const userChunks = getUserChunks();
-    const chunkStatus: Record<number, ValidationState> = {};
-    const chunkFeedback: Record<number, string> = {};
-    let correctChunksCount = 0;
-    const currentMistakes: Record<string, number> = {};
+    const { result: vResult, mistakes: currentMistakes } = validateAnswer(
+      currentSentence, splitIndices, chunkLabels, subLabels, includeBB
+    );
 
-    userChunks.forEach((chunk, idx) => {
-      const chunkTokens = chunk.tokens;
-      const firstTokenId = chunkTokens[0].id;
-      const firstTokenRole = chunkTokens[0].role;
-      const missedInternalSplit = chunkTokens.slice(1).some(t => t.newChunk);
-      const isConsistentRole = chunkTokens.every(t => t.role === firstTokenRole);
-      const lastTokenId = chunkTokens[chunkTokens.length - 1].id;
-      const lastTokenIndex = currentSentence.tokens.findIndex(t => t.id === lastTokenId);
-      const nextToken = currentSentence.tokens[lastTokenIndex + 1];
-      const splitTooEarly = nextToken && nextToken.role === firstTokenRole && !nextToken.newChunk;
-      const firstTokenIndexInSent = currentSentence.tokens.findIndex(t => t.id === firstTokenId);
-      const prevToken = currentSentence.tokens[firstTokenIndexInSent - 1];
-      const startedTooLate = prevToken && prevToken.role === firstTokenRole && !chunkTokens[0].newChunk;
-      const isValidSplit = isConsistentRole && !splitTooEarly && !startedTooLate && !missedInternalSplit;
+    setValidationResult(vResult);
 
-      if (!isValidSplit) {
-        chunkStatus[idx] = 'incorrect-split';
-        if (!isConsistentRole || missedInternalSplit) chunkFeedback[idx] = FEEDBACK_STRUCTURE.INCONSISTENT;
-        else if (splitTooEarly || startedTooLate) chunkFeedback[idx] = FEEDBACK_STRUCTURE.TOO_MANY_SPLITS;
-        else chunkFeedback[idx] = "De verdeling klopt niet.";
-        currentMistakes['Verdeling'] = (currentMistakes['Verdeling'] || 0) + 1;
-      } else {
-        const userLabel = chunkLabels[firstTokenId];
-        if (userLabel === firstTokenRole) {
-          chunkStatus[idx] = 'correct';
-          correctChunksCount++;
-        } else {
-          const correctRoleName = ROLES.find(r => r.key === firstTokenRole)?.label || firstTokenRole;
-          if (firstTokenRole === 'pv' && userLabel === 'wg') {
-             chunkStatus[idx] = 'warning';
-             chunkFeedback[idx] = FEEDBACK_MATRIX['wg'] && FEEDBACK_MATRIX['wg']['pv'] ? FEEDBACK_MATRIX['wg']['pv'] : "Dit hoort bij het gezegde.";
-             currentMistakes[correctRoleName] = (currentMistakes[correctRoleName] || 0) + 1;
-          } else {
-             chunkStatus[idx] = 'incorrect-role';
-             if (userLabel && FEEDBACK_MATRIX[userLabel] && FEEDBACK_MATRIX[userLabel][firstTokenRole]) {
-                 chunkFeedback[idx] = FEEDBACK_MATRIX[userLabel][firstTokenRole];
-             } else {
-                 const userRoleName = ROLES.find(r => r.key === userLabel)?.label || "Gekozen";
-                 chunkFeedback[idx] = `Dit is niet ${userRoleName}, maar het ${correctRoleName}.`;
-             }
-             currentMistakes[correctRoleName] = (currentMistakes[correctRoleName] || 0) + 1;
-          }
-        }
-      }
-    });
-
-    let subRoleMismatch = false;
-    currentSentence.tokens.forEach(t => {
-       const userSub = subLabels[t.id];
-       let expectedSub = t.subRole;
-       if (!includeBB && expectedSub === 'bijv_bep') expectedSub = undefined;
-       if (userSub !== expectedSub) subRoleMismatch = true;
-    });
-
-    const isSplitPerfect = correctChunksCount === userChunks.length;
-    let realChunkCount = 0;
-    currentSentence.tokens.forEach((t, i) => {
-        if (i === 0 || t.role !== currentSentence.tokens[i-1].role || t.newChunk) realChunkCount++;
-    });
-    const reallyPerfect = isSplitPerfect && userChunks.length === realChunkCount && !subRoleMismatch;
-
-    setValidationResult({
-      score: correctChunksCount,
-      total: userChunks.length,
-      chunkStatus,
-      chunkFeedback,
-      isPerfect: reallyPerfect
-    });
+    const realChunkCount = countRealChunks(currentSentence.tokens);
 
     // Guard: only update stats and record usage on the FIRST check per sentence.
     // Prevents double-counting when the student clicks Controleer multiple times.
     if (!validationResult) {
       if (mode === 'session') {
         const newTotal = sessionStats.total + realChunkCount;
-        const newCorrect = sessionStats.correct + correctChunksCount;
+        const newCorrect = sessionStats.correct + vResult.score;
         setSessionStats({ correct: newCorrect, total: newTotal });
         const newMistakeStats = { ...mistakeStats };
         Object.entries(currentMistakes).forEach(([role, count]) => {
@@ -505,8 +417,8 @@ export function useTrainer(): TrainerState {
         });
         setMistakeStats(newMistakeStats);
       }
-      const splitErrorCount = Object.values(chunkStatus).filter(s => s === 'incorrect-split').length;
-      recordAttempt(currentSentence.id, reallyPerfect, currentMistakes, splitErrorCount);
+      const splitErrorCount = Object.values(vResult.chunkStatus).filter(s => s === 'incorrect-split').length;
+      recordAttempt(currentSentence.id, vResult.isPerfect, currentMistakes, splitErrorCount);
     }
   };
 
@@ -534,11 +446,7 @@ export function useTrainer(): TrainerState {
   const executeShowAnswer = () => {
     if (!currentSentence) return;
     setHintMessage(null);
-    const correctSplits = new Set<number>();
-    currentSentence.tokens.forEach((t, i) => {
-      const next = currentSentence.tokens[i + 1];
-      if (next && (t.role !== next.role || next.newChunk)) correctSplits.add(i);
-    });
+    const correctSplits = computeCorrectSplits(currentSentence.tokens);
     setSplitIndices(correctSplits);
     setStep('label');
 
@@ -559,10 +467,7 @@ export function useTrainer(): TrainerState {
     });
 
     if (!validationResult) {
-      let realChunkCount = 0;
-      currentSentence.tokens.forEach((t, i) => {
-          if (i === 0 || t.role !== currentSentence.tokens[i-1].role || t.newChunk) realChunkCount++;
-      });
+      const realChunkCount = countRealChunks(currentSentence.tokens);
       if (mode === 'session') {
         setSessionStats(prev => ({ correct: prev.correct, total: prev.total + realChunkCount }));
       }
