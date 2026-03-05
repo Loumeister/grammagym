@@ -4,6 +4,7 @@ import { HomeScreen } from './screens/HomeScreen';
 import { ScoreScreen } from './screens/ScoreScreen';
 import { TrainerScreen } from './screens/TrainerScreen';
 import { SentenceEditorScreen } from './screens/SentenceEditorScreen';
+import { EditorView } from './components/EditorView';
 import { UsageLogScreen } from './screens/UsageLogScreen';
 import { preloadCommonLevels } from './data/sentenceLoader';
 import { decodeShared } from './data/customSentenceStore';
@@ -16,6 +17,7 @@ const initialSharedSentences: Sentence[] = sharedParam ? decodeShared(sharedPara
 export default function App() {
   const trainer = useTrainer();
   const [showEditor, setShowEditor] = useState(() => window.location.hash === '#/editor');
+  const [showDocent, setShowDocent] = useState(() => window.location.hash === '#/docent');
   const [showUsageLog, setShowUsageLog] = useState(() => window.location.hash === '#/usage');
   const [sharedSentences] = useState<Sentence[]>(initialSharedSentences);
 
@@ -28,6 +30,7 @@ export default function App() {
   useEffect(() => {
     const onHashChange = () => {
       setShowEditor(window.location.hash === '#/editor');
+      setShowDocent(window.location.hash === '#/docent');
       setShowUsageLog(window.location.hash === '#/usage');
     };
     window.addEventListener('hashchange', onHashChange);
@@ -57,6 +60,11 @@ export default function App() {
         }}
       />
     );
+  }
+
+  // Docent screen (teacher analytics area)
+  if (showDocent) {
+    return <EditorView darkMode={trainer.darkMode} />;
   }
 
   // Home Screen: no active sentence and no finished session
