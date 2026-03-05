@@ -422,9 +422,23 @@ export const UsageLogScreen: React.FC<UsageLogScreenProps> = ({ onBack }) => {
               .sort((a, b) => b[1] - a[1])
               .slice(0, 3);
             const rateInfo = d.usage.attempts > 0 ? describeRate(d.perfectRate) : { text: 'Nog niet gecontroleerd', emoji: '⚪', colorClass: 'text-slate-400' };
-            const showAnswerPct = d.usage.attempts > 0
-              ? ((d.usage.showAnswerCount / (d.usage.attempts + d.usage.showAnswerCount)) * 100)
-              : 0;
+            // Show-answer ratio: how often students gave up vs checked
+            const totalInteractions = d.usage.attempts + d.usage.showAnswerCount;
+            const gaveUpOften = totalInteractions > 0 && (d.usage.showAnswerCount / totalInteractions) > 0.5;
+
+            // Pick a single, most relevant tip (priority order)
+            let tip = '';
+            if (d.perfectRate < 25 && d.usage.attempts >= 3) {
+              tip = '💡 Tip: Deze zin is erg moeilijk. Overweeg om hem eerst klassikaal te bespreken.';
+            } else if (gaveUpOften && totalInteractions >= 3) {
+              tip = '💡 Tip: Leerlingen bekijken hier vaak het antwoord. Misschien is extra uitleg nodig.';
+            } else if (d.perfectRate >= 25 && d.perfectRate < 50 && d.usage.splitErrors > d.usage.attempts) {
+              tip = '💡 Tip: Leerlingen splitsen deze zin vaak verkeerd. Oefen het herkennen van zinsdelen.';
+            } else if (d.perfectRate >= 25 && d.perfectRate < 50 && roleErrorEntries.length > 0) {
+              tip = `💡 Tip: Leerlingen verwarren hier vaak het ${roleErrorEntries[0][0]}. Extra uitleg kan helpen.`;
+            } else if (d.perfectRate >= 80) {
+              tip = '✨ Deze zin wordt goed beheerst!';
+            }
 
             return (
               <div key={d.sentenceId} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow">
@@ -479,14 +493,10 @@ export const UsageLogScreen: React.FC<UsageLogScreenProps> = ({ onBack }) => {
                 )}
 
                 {/* Teacher-friendly insight */}
-                {d.usage.attempts >= 2 && (
+                {d.usage.attempts >= 2 && tip && (
                   <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/50">
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
-                      {d.perfectRate < 25 && d.usage.attempts >= 3 && '💡 Tip: Deze zin is erg moeilijk. Overweeg om hem eerst klassikaal te bespreken.'}
-                      {d.perfectRate >= 25 && d.perfectRate < 50 && d.usage.splitErrors > d.usage.attempts && '💡 Tip: Leerlingen splitsen deze zin vaak verkeerd. Oefen het herkennen van zinsdelen.'}
-                      {d.perfectRate >= 25 && d.perfectRate < 50 && d.usage.splitErrors <= d.usage.attempts && roleErrorEntries.length > 0 && `💡 Tip: Leerlingen verwarren hier vaak het ${roleErrorEntries[0][0]}. Extra uitleg kan helpen.`}
-                      {showAnswerPct > 50 && '💡 Tip: Meer dan de helft van de pogingen eindigt met "antwoord bekijken". Misschien is extra uitleg nodig.'}
-                      {d.perfectRate >= 80 && '✨ Deze zin wordt goed beheerst!'}
+                      {tip}
                     </p>
                   </div>
                 )}

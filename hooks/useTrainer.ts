@@ -507,9 +507,10 @@ export function useTrainer(): TrainerState {
       } else if (status === 'incorrect-role') {
         const feedback = vResult.chunkFeedback[Number(idx)] || '';
         logInteraction('error_role', currentSentence.id, `chunk=${idx},feedback=${feedback}`);
-      } else if (status === 'warning' && vResult.chunkFeedback[Number(idx)]?.includes('bijzin')) {
-        logInteraction('error_bijzin_functie', currentSentence.id, `chunk=${idx}`);
       }
+    }
+    for (const idx of vResult.bijzinWarningChunks) {
+      logInteraction('error_bijzin_functie', currentSentence.id, `chunk=${idx}`);
     }
 
     const realChunkCount = countRealChunks(currentSentence.tokens);

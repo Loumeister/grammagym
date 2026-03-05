@@ -12,6 +12,7 @@ export interface ValidationResult {
   chunkStatus: Record<number, ValidationState>;
   chunkFeedback: Record<number, string>;
   isPerfect: boolean;
+  bijzinWarningChunks: number[]; // Chunk indices with bijzin function warnings
 }
 
 /**
@@ -199,6 +200,7 @@ export function validateAnswer(
   // --- Bijzin function validation ---
   let bijzinFunctieMismatch = false;
   let bijvBepLinkMismatch = false;
+  const bijzinWarningChunks: number[] = [];
   if (bijzinFunctieLabels) {
     userChunks.forEach((chunk, idx) => {
       const firstToken = chunk.tokens[0];
@@ -217,6 +219,7 @@ export function validateAnswer(
           const userTarget = bijvBepLinks[firstToken.id];
           if (userTarget !== firstToken.bijvBepTarget) {
             bijvBepLinkMismatch = true;
+            bijzinWarningChunks.push(idx);
             if (!userTarget) {
               chunkFeedback[idx] = "Goed! Wijs nu het woord aan waar deze bijzin bij hoort.";
               chunkStatus[idx] = 'warning';
@@ -229,6 +232,7 @@ export function validateAnswer(
         }
       } else {
         bijzinFunctieMismatch = true;
+        bijzinWarningChunks.push(idx);
         if (!userFunctie) {
           chunkFeedback[idx] = FEEDBACK_BIJZIN_FUNCTIE.MISSING;
           chunkStatus[idx] = 'warning';
@@ -259,7 +263,8 @@ export function validateAnswer(
       total: userChunks.length,
       chunkStatus,
       chunkFeedback,
-      isPerfect
+      isPerfect,
+      bijzinWarningChunks,
     },
     mistakes: currentMistakes
   };
