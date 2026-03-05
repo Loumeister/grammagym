@@ -7,12 +7,22 @@ interface SentenceChunkProps {
   tokens: Token[];
   startIndex: number; // Global index of the first token in this chunk
   assignedRole: RoleDefinition | null;
+  assignedBijzinFunctie: RoleDefinition | null;
+  bijvBepTargetText: string | null; // Text of the word this bvb bijzin refers to
   subRoles: Record<string, RoleDefinition>; // Map tokenId -> RoleDefinition
   onDropChunk: (e: React.DragEvent<HTMLDivElement>, chunkId: string) => void;
+  onDropBijzinFunctie: (e: React.DragEvent<HTMLDivElement>, chunkId: string) => void;
   onDropWord: (e: React.DragEvent<HTMLSpanElement>, tokenId: string) => void;
   onRemoveRole: (chunkId: string) => void;
+  onRemoveBijzinFunctie: (chunkId: string) => void;
   onRemoveSubRole: (tokenId: string) => void;
   onToggleSplit: (globalTokenIndex: number) => void;
+  onStartBijvBepLinking: (sourceId: string) => void;
+  onRemoveBijvBepLink: (sourceId: string) => void;
+  onWordClick: (tokenId: string) => void; // For bvb linking mode
+  hasBijzinFunctie: boolean; // Whether this chunk expects a bijzin function (gated by includeBB)
+  isLinkingMode: boolean; // Whether any chunk is in bvb linking mode
+  isLinkingSource: boolean; // Whether THIS chunk is the one being linked
   validationState?: ValidationState;
   feedbackMessage?: string | null;
   isLargeFont?: boolean;
@@ -22,17 +32,28 @@ export const SentenceChunk: React.FC<SentenceChunkProps> = ({
   tokens,
   startIndex,
   assignedRole,
+  assignedBijzinFunctie,
+  bijvBepTargetText,
   subRoles,
   onDropChunk,
+  onDropBijzinFunctie,
   onDropWord,
   onRemoveRole,
+  onRemoveBijzinFunctie,
   onRemoveSubRole,
   onToggleSplit,
+  onStartBijvBepLinking,
+  onRemoveBijvBepLink,
+  onWordClick,
+  hasBijzinFunctie,
+  isLinkingMode,
+  isLinkingSource,
   validationState,
   feedbackMessage,
   isLargeFont = false
 }) => {
   const [isOverChunk, setIsOverChunk] = useState(false);
+  const [isOverBijzinFunctie, setIsOverBijzinFunctie] = useState(false);
   const [hoveredWordId, setHoveredWordId] = useState<string | null>(null);
   const [dismissedFeedback, setDismissedFeedback] = useState(false);
 
@@ -72,6 +93,10 @@ export const SentenceChunk: React.FC<SentenceChunkProps> = ({
   }
 
   const chunkId = tokens[0].id;
+
+  // Show bijzin function row when the sentence data expects a bijzinFunctie for this chunk
+  // and the user has assigned 'bijzin' as the main chunk role
+  const showBijzinFunctieRow = hasBijzinFunctie && assignedRole?.key === 'bijzin';
 
   const handleDragOverChunk = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -154,6 +179,79 @@ export const SentenceChunk: React.FC<SentenceChunkProps> = ({
         )}
       </div>
 
+      {/* Bijzin Function Row - shown when chunk is labeled as bijzin and has a function */}
+      {showBijzinFunctieRow && (
+        <div
+          className={`
+            h-8 border-b border-dashed border-slate-200 dark:border-slate-600 flex items-center justify-center text-[11px] cursor-pointer transition-all
+            ${isOverBijzinFunctie ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-400 dark:border-blue-500' : ''}
+            ${assignedBijzinFunctie ? assignedBijzinFunctie.colorClass + ' font-bold hover:opacity-80' : 'text-slate-400 dark:text-slate-500 italic'}
+          `}
+          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsOverBijzinFunctie(true); setIsOverChunk(false); }}
+          onDragLeave={() => setIsOverBijzinFunctie(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsOverBijzinFunctie(false);
+            onDropBijzinFunctie(e, chunkId);
+          }}
+          onClick={(e) => {
+            if (assignedBijzinFunctie && !validationState) {
+              e.stopPropagation();
+              onRemoveBijzinFunctie(chunkId);
+            }
+          }}
+        >
+          {assignedBijzinFunctie ? (
+            <div className="flex items-center gap-2 w-full justify-center px-2 relative group/functie">
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 mr-1">functie:</span>
+              <span className="relative z-10">{assignedBijzinFunctie.label}</span>
+              {!validationState && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onRemoveBijzinFunctie(chunkId); }}
+                  className="hidden group-hover/functie:flex absolute right-0 hover:bg-black/10 dark:hover:bg-white/10 rounded-full w-4 h-4 items-center justify-center transition-colors z-20 text-[10px]"
+                  title="Verwijder functie"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          ) : (
+            <span className="text-[10px]">Sleep functie hier (bijv. LV, BWB)</span>
+          )}
+        </div>
+      )}
+
+      {/* Bijv Bep Link Row - shown when bijzin function is bijv_bep */}
+      {showBijzinFunctieRow && assignedBijzinFunctie?.key === 'bijv_bep' && (
+        <div className="h-7 border-b border-dashed border-slate-200 dark:border-slate-600 flex items-center justify-center text-[10px] px-2">
+          {bijvBepTargetText ? (
+            <div className="flex items-center gap-1 group/link">
+              <span className="text-slate-400 dark:text-slate-500">hoort bij:</span>
+              <span className="font-bold text-teal-700 dark:text-teal-300">'{bijvBepTargetText}'</span>
+              {!validationState && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onRemoveBijvBepLink(chunkId); }}
+                  className="opacity-0 group-hover/link:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 rounded-full w-4 h-4 flex items-center justify-center transition-all text-[10px]"
+                  title="Verwijder verwijzing"
+                >×</button>
+              )}
+            </div>
+          ) : isLinkingSource ? (
+            <span className="text-blue-500 dark:text-blue-400 animate-pulse font-medium">
+              ← Klik op het woord waar deze bijzin bij hoort
+            </span>
+          ) : !validationState ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); onStartBijvBepLinking(chunkId); }}
+              className="text-teal-600 dark:text-teal-400 hover:underline cursor-pointer"
+            >
+              Wijs het woord aan waar deze bijzin bij hoort →
+            </button>
+          ) : null}
+        </div>
+      )}
+
       {/* Words Container */}
       <div className={`
         p-3 flex flex-wrap gap-y-4 gap-x-0 justify-center items-end min-h-[60px]
@@ -187,6 +285,7 @@ export const SentenceChunk: React.FC<SentenceChunkProps> = ({
                       text-slate-800 dark:text-slate-200 font-medium px-1 py-1 rounded transition-colors duration-200 border border-transparent
                       ${isWordHovered ? 'bg-yellow-100 dark:bg-yellow-900/50 border-yellow-300 dark:border-yellow-600 shadow-sm' : ''}
                       ${!isWordHovered && !subRole ? 'hover:bg-slate-100 dark:hover:bg-slate-700' : ''}
+                      ${isLinkingMode && !isLinkingSource ? 'cursor-pointer ring-2 ring-teal-300 dark:ring-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/30 hover:ring-teal-500' : ''}
                     `}
                     onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                     onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); handleWordDragEnter(token.id); }}
@@ -196,6 +295,12 @@ export const SentenceChunk: React.FC<SentenceChunkProps> = ({
                       e.stopPropagation();
                       onDropWord(e, token.id);
                       setHoveredWordId(null);
+                    }}
+                    onClick={(e) => {
+                      if (isLinkingMode && !isLinkingSource) {
+                        e.stopPropagation();
+                        onWordClick(token.id);
+                      }
                     }}
                   >
                     {token.text}
