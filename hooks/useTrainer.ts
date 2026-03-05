@@ -4,6 +4,7 @@ import { Sentence, PlacementMap, RoleKey, DifficultyLevel } from '../types';
 import { useSentences } from './useSentences';
 import { getCustomSentences } from '../data/customSentenceStore';
 import { recordAttempt, recordShowAnswer } from '../usageData';
+import { logInteraction } from '../interactionLog';
 import {
   buildUserChunks,
   countRealChunks,
@@ -232,6 +233,7 @@ export function useTrainer(): TrainerState {
   };
 
   const loadSentence = (sentence: Sentence) => {
+    logInteraction('sentence_start', sentence.id);
     setCurrentSentence(sentence);
     setStep('split');
     setSplitIndices(new Set());
@@ -262,6 +264,7 @@ export function useTrainer(): TrainerState {
     setMistakeStats({});
     setIsSessionFinished(false);
     setMode('session');
+    logInteraction('session_start', undefined, `count=${count}`);
     loadSentence(selected[0]);
   };
 
@@ -274,6 +277,7 @@ export function useTrainer(): TrainerState {
     setMistakeStats({});
     setIsSessionFinished(false);
     setMode('session');
+    logInteraction('session_start', undefined, `shared,count=${shuffled.length}`);
     loadSentence(shuffled[0]);
   };
 
@@ -283,6 +287,7 @@ export function useTrainer(): TrainerState {
       setSessionIndex(nextIndex);
       loadSentence(sessionQueue[nextIndex]);
     } else {
+      logInteraction('session_finish');
       setIsSessionFinished(true);
       setCurrentSentence(null);
     }
@@ -311,6 +316,7 @@ export function useTrainer(): TrainerState {
     if (showAnswerMode) return;
     if (validationResult) setValidationResult(null);
     setHintMessage(null);
+    logInteraction('split_toggle', currentSentence?.id, `index=${tokenIndex}`);
 
     const newSplits = new Set(splitIndices);
     if (newSplits.has(tokenIndex)) {
@@ -322,12 +328,14 @@ export function useTrainer(): TrainerState {
   };
 
   const handleNextStep = () => {
+    logInteraction('step_forward', currentSentence?.id);
     setStep('label');
     setValidationResult(null);
     setHintMessage(null);
   };
 
   const handleBackStep = () => {
+    logInteraction('step_back', currentSentence?.id);
     setStep('split');
     setValidationResult(null);
     setHintMessage(null);
@@ -348,6 +356,7 @@ export function useTrainer(): TrainerState {
     if (showAnswerMode) return;
     const roleKey = e.dataTransfer.getData("text/role") as RoleKey;
     if (roleKey) {
+      logInteraction('label_drop', currentSentence?.id, `chunk=${chunkId},role=${roleKey}`);
       setChunkLabels(prev => ({ ...prev, [chunkId]: roleKey }));
       setValidationResult(null);
       setHintMessage(null);
@@ -359,6 +368,7 @@ export function useTrainer(): TrainerState {
     if (showAnswerMode) return;
     const roleKey = e.dataTransfer.getData("text/role") as RoleKey;
     if (roleKey) {
+      logInteraction('sub_label_drop', currentSentence?.id, `token=${tokenId},role=${roleKey}`);
       setSubLabels(prev => ({ ...prev, [tokenId]: roleKey }));
       setValidationResult(null);
       setHintMessage(null);
@@ -367,6 +377,7 @@ export function useTrainer(): TrainerState {
 
   const removeLabel = (chunkId: string) => {
     if (showAnswerMode) return;
+    logInteraction('label_remove', currentSentence?.id, `chunk=${chunkId}`);
     const newLabels = { ...chunkLabels };
     delete newLabels[chunkId];
     setChunkLabels(newLabels);
@@ -376,6 +387,7 @@ export function useTrainer(): TrainerState {
 
   const removeSubLabel = (tokenId: string) => {
     if (showAnswerMode) return;
+    logInteraction('sub_label_remove', currentSentence?.id, `token=${tokenId}`);
     const newLabels = { ...subLabels };
     delete newLabels[tokenId];
     setSubLabels(newLabels);
@@ -388,6 +400,7 @@ export function useTrainer(): TrainerState {
     if (showAnswerMode) return;
     const roleKey = e.dataTransfer.getData("text/role") as RoleKey;
     if (roleKey) {
+      logInteraction('bijzin_functie_drop', currentSentence?.id, `chunk=${chunkId},role=${roleKey}`);
       setBijzinFunctieLabels(prev => ({ ...prev, [chunkId]: roleKey }));
       setValidationResult(null);
       setHintMessage(null);
@@ -396,6 +409,7 @@ export function useTrainer(): TrainerState {
 
   const removeBijzinFunctieLabel = (chunkId: string) => {
     if (showAnswerMode) return;
+    logInteraction('bijzin_functie_remove', currentSentence?.id, `chunk=${chunkId}`);
     const newLabels = { ...bijzinFunctieLabels };
     delete newLabels[chunkId];
     setBijzinFunctieLabels(newLabels);
@@ -414,6 +428,7 @@ export function useTrainer(): TrainerState {
 
   const completeBijvBepLink = (targetTokenId: string) => {
     if (!linkingBijvBepId) return;
+    logInteraction('bijvbep_link', currentSentence?.id, `source=${linkingBijvBepId},target=${targetTokenId}`);
     setBijvBepLinks(prev => ({ ...prev, [linkingBijvBepId]: targetTokenId }));
     setLinkingBijvBepId(null);
     setValidationResult(null);
@@ -426,6 +441,7 @@ export function useTrainer(): TrainerState {
 
   const removeBijvBepLink = (sourceId: string) => {
     if (showAnswerMode) return;
+    logInteraction('bijvbep_unlink', currentSentence?.id, `source=${sourceId}`);
     const newLinks = { ...bijvBepLinks };
     delete newLinks[sourceId];
     setBijvBepLinks(newLinks);
@@ -435,6 +451,7 @@ export function useTrainer(): TrainerState {
 
   const handleHint = () => {
     if (!currentSentence) return;
+    logInteraction('hint', currentSentence.id);
 
     const usedRoles = Object.values(chunkLabels);
     if (!usedRoles.includes('pv')) { setHintMessage(HINTS.MISSING_PV); return; }
@@ -474,6 +491,7 @@ export function useTrainer(): TrainerState {
 
   const handleCheck = () => {
     if (!currentSentence) return;
+    logInteraction('check', currentSentence.id);
 
     const { result: vResult, mistakes: currentMistakes } = validateAnswer(
       currentSentence, splitIndices, chunkLabels, subLabels, includeBB,
@@ -481,6 +499,18 @@ export function useTrainer(): TrainerState {
     );
 
     setValidationResult(vResult);
+
+    // Log individual errors for diagnostics
+    for (const [idx, status] of Object.entries(vResult.chunkStatus)) {
+      if (status === 'incorrect-split') {
+        logInteraction('error_split', currentSentence.id, `chunk=${idx}`);
+      } else if (status === 'incorrect-role') {
+        const feedback = vResult.chunkFeedback[Number(idx)] || '';
+        logInteraction('error_role', currentSentence.id, `chunk=${idx},feedback=${feedback}`);
+      } else if (status === 'warning' && vResult.chunkFeedback[Number(idx)]?.includes('bijzin')) {
+        logInteraction('error_bijzin_functie', currentSentence.id, `chunk=${idx}`);
+      }
+    }
 
     const realChunkCount = countRealChunks(currentSentence.tokens);
 
@@ -525,6 +555,7 @@ export function useTrainer(): TrainerState {
 
   const executeShowAnswer = () => {
     if (!currentSentence) return;
+    logInteraction('show_answer', currentSentence.id);
     setHintMessage(null);
     const correctSplits = computeCorrectSplits(currentSentence.tokens);
     setSplitIndices(correctSplits);
@@ -582,6 +613,7 @@ export function useTrainer(): TrainerState {
   };
 
   const resetToHome = () => {
+    logInteraction('abort', currentSentence?.id);
     setCurrentSentence(null);
     setMode('free');
     setSessionQueue([]);
