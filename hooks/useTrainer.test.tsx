@@ -1,14 +1,15 @@
 /**
  * Tests for useTrainer hook.
  *
- * Focus areas:
- * 1. Sentence filtering (getFilteredSentences) – tested via availableSentences
- * 2. toggleSplit – adds and removes split indices
- * 3. handleNextStep / handleBackStep – step transitions
- * 4. startSession – queue setup and first sentence loaded
- * 5. nextSessionSentence – session advancement and finish detection
+ * Kept tests must earn their place: complex multi-condition logic or
+ * guards against non-obvious silent failures.
+ *
+ * 1. Sentence filtering (getFilteredSentences) – complex multi-condition logic
+ * 2. Session queue capping – boundary logic
+ * 3. Session finish detection – terminal state guard
+ * 4. handleCheck double-count prevention – subtle first-check-only guard
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import type { Sentence } from '../types';
 import { useTrainer } from './useTrainer';
@@ -29,13 +30,11 @@ function makeSentence(overrides: Partial<Sentence> & { id: number }): Sentence {
   };
 }
 
-// Sentences covering many filter scenarios
 const SENTENCES: Sentence[] = [
-  // Basic WG sentences (level 1)
   makeSentence({ id: 1, predicateType: 'WG', level: 1 }),
   makeSentence({ id: 2, predicateType: 'WG', level: 1 }),
 
-  // NG sentence (level 1)
+  // NG sentence
   {
     ...makeSentence({ id: 3, predicateType: 'NG', level: 1 }),
     tokens: [
@@ -46,7 +45,7 @@ const SENTENCES: Sentence[] = [
     ],
   },
 
-  // Sentence with LV
+  // Sentence with LV (level 2)
   {
     ...makeSentence({ id: 4, predicateType: 'WG', level: 2 }),
     tokens: [
@@ -121,61 +120,62 @@ vi.mock('../interactionLog', () => ({
   logInteraction: vi.fn(),
 }));
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Render the hook and return the result. Wraps every update in act(). */
 function setup() {
   return renderHook(() => useTrainer());
 }
 
-// ─── availableSentences / getFilteredSentences ────────────────────────────────
+// ─── getFilteredSentences (via availableSentences) ────────────────────────────
+//
+// This is the most complex logic in the hook: a 6-condition filter with
+// interactions between level, predicateMode, focus flags, and bijst/bijzin
+// inclusion. Each test targets a distinct code path.
 
 describe('getFilteredSentences (via availableSentences)', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('returns all sentences when no filters are set', () => {
+  it('excludes compound (level 4) sentences by default', () => {
     const { result } = setup();
-    // The level 4 (bijzin) sentence is excluded by default when no focusBijzin
     const ids = result.current.availableSentences.map(s => s.id);
-    expect(ids).not.toContain(8); // compound excluded without focusBijzin
+    expect(ids).not.toContain(8);
   });
 
-  it('filters by predicateMode WG', () => {
+  it('filters by predicateMode WG – excludes NG sentences', () => {
     const { result } = setup();
     act(() => result.current.setPredicateMode('WG'));
-    const allWG = result.current.availableSentences.every(s => s.predicateType === 'WG');
-    expect(allWG).toBe(true);
     const ids = result.current.availableSentences.map(s => s.id);
-    expect(ids).not.toContain(3); // NG sentence excluded
+    expect(ids).not.toContain(3);
   });
 
-  it('filters by predicateMode NG', () => {
+  it('filters by predicateMode NG – includes only NG sentences', () => {
     const { result } = setup();
     act(() => result.current.setPredicateMode('NG'));
     const ids = result.current.availableSentences.map(s => s.id);
     expect(ids).toContain(3);
-    // WG-only sentences should be excluded
     expect(ids).not.toContain(1);
   });
 
-  it('includes compound (bijzin) sentences when focusBijzin is true', () => {
+  it('includes compound sentences when focusBijzin is true', () => {
     const { result } = setup();
     act(() => result.current.setFocusBijzin(true));
-    const ids = result.current.availableSentences.map(s => s.id);
-    expect(ids).toContain(8);
+    expect(result.current.availableSentences.map(s => s.id)).toContain(8);
   });
 
-  it('focuses on sentences containing LV when focusLV is set', () => {
+  it('shows ONLY compound sentences when focusBijzin is the only active focus', () => {
+    // focusBijzin without LV/MV/VV means: only level-4 sentences pass
+    const { result } = setup();
+    act(() => result.current.setFocusBijzin(true));
+    const levels = new Set(result.current.availableSentences.map(s => s.level));
+    expect(levels.has(4)).toBe(true);
+    expect(levels.has(1)).toBe(false);
+  });
+
+  it('focuses on sentences with LV when focusLV is set', () => {
     const { result } = setup();
     act(() => result.current.setFocusLV(true));
     const ids = result.current.availableSentences.map(s => s.id);
-    expect(ids).toContain(4); // has LV token
-    expect(ids).not.toContain(1); // plain WG, no LV
+    expect(ids).toContain(4);
+    expect(ids).not.toContain(1);
   });
 
-  it('focuses on sentences containing MV when focusMV is set', () => {
+  it('focuses on sentences with MV when focusMV is set', () => {
     const { result } = setup();
     act(() => result.current.setFocusMV(true));
     const ids = result.current.availableSentences.map(s => s.id);
@@ -183,7 +183,7 @@ describe('getFilteredSentences (via availableSentences)', () => {
     expect(ids).not.toContain(1);
   });
 
-  it('focuses on sentences containing VV when focusVV is set', () => {
+  it('focuses on sentences with VV when focusVV is set', () => {
     const { result } = setup();
     act(() => result.current.setFocusVV(true));
     const ids = result.current.availableSentences.map(s => s.id);
@@ -198,227 +198,63 @@ describe('getFilteredSentences (via availableSentences)', () => {
     expect(levels.every(l => l === 2)).toBe(true);
   });
 
-  it('includes bijst sentences at level 2 when includeBijst is on', () => {
-    const { result } = setup();
-    act(() => {
-      result.current.setSelectedLevel(2);
-      result.current.setIncludeBijst(true);
-    });
-    const ids = result.current.availableSentences.map(s => s.id);
-    expect(ids).toContain(6); // bijst sentence at level 2
-  });
-
-  it('excludes bijst sentences at level 2 when includeBijst is off', () => {
+  it('excludes bijst sentences at a non-high level unless includeBijst is on', () => {
     const { result } = setup();
     act(() => result.current.setSelectedLevel(2));
-    const ids = result.current.availableSentences.map(s => s.id);
-    expect(ids).not.toContain(6);
-  });
+    expect(result.current.availableSentences.map(s => s.id)).not.toContain(6);
 
-  it('shows only compound (level 4) sentences when focusBijzin is the only focus active', () => {
-    // When focusBijzin is on and no other focus (LV/MV/VV) is active, the filter
-    // returns ONLY compound sentences.
-    const { result } = setup();
-    act(() => result.current.setFocusBijzin(true));
-    const levels = new Set(result.current.availableSentences.map(s => s.level));
-    expect(levels.has(4)).toBe(true);
-    expect(levels.has(1)).toBe(false);
-  });
-});
-
-// ─── toggleSplit ──────────────────────────────────────────────────────────────
-
-describe('toggleSplit', () => {
-  it('adds a split index when the index is not present', async () => {
-    const { result } = setup();
-    await act(async () => { await result.current.handleSentenceSelect(1); });
-    act(() => result.current.toggleSplit(1));
-    expect(result.current.splitIndices.has(1)).toBe(true);
-  });
-
-  it('removes a split index when toggled twice', async () => {
-    const { result } = setup();
-    await act(async () => { await result.current.handleSentenceSelect(1); });
-    act(() => result.current.toggleSplit(1));
-    act(() => result.current.toggleSplit(1));
-    expect(result.current.splitIndices.has(1)).toBe(false);
-  });
-
-  it('clears validation result when a split is toggled', async () => {
-    const { result } = setup();
-    await act(async () => { await result.current.handleSentenceSelect(1); });
-    act(() => result.current.handleNextStep());
-    act(() => result.current.handleBackStep());
-    act(() => result.current.toggleSplit(1));
-    expect(result.current.validationResult).toBeNull();
-  });
-});
-
-// ─── handleNextStep / handleBackStep ─────────────────────────────────────────
-
-describe('step transitions', () => {
-  it('handleNextStep advances from split to label', async () => {
-    const { result } = setup();
-    await act(async () => { await result.current.handleSentenceSelect(1); });
-    expect(result.current.step).toBe('split');
-    act(() => result.current.handleNextStep());
-    expect(result.current.step).toBe('label');
-  });
-
-  it('handleBackStep returns from label to split', async () => {
-    const { result } = setup();
-    await act(async () => { await result.current.handleSentenceSelect(1); });
-    act(() => result.current.handleNextStep());
-    expect(result.current.step).toBe('label');
-    act(() => result.current.handleBackStep());
-    expect(result.current.step).toBe('split');
-  });
-
-  it('clears validationResult on step change', async () => {
-    const { result } = setup();
-    await act(async () => { await result.current.handleSentenceSelect(1); });
-    act(() => result.current.handleNextStep());
-    act(() => result.current.handleBackStep());
-    expect(result.current.validationResult).toBeNull();
+    act(() => result.current.setIncludeBijst(true));
+    expect(result.current.availableSentences.map(s => s.id)).toContain(6);
   });
 });
 
 // ─── startSession ─────────────────────────────────────────────────────────────
 
 describe('startSession', () => {
-  it('sets mode to session', () => {
-    const { result } = setup();
-    act(() => { result.current.startSession(); });
-    expect(result.current.mode).toBe('session');
-  });
-
-  it('sets a current sentence from the available pool', () => {
-    const { result } = setup();
-    act(() => { result.current.startSession(); });
-    expect(result.current.currentSentence).not.toBeNull();
-  });
-
-  it('respects customSessionCount', () => {
-    const { result } = setup();
-    act(() => { result.current.setCustomSessionCount(2); });
-    act(() => { result.current.startSession(); });
-    expect(result.current.sessionQueue).toHaveLength(2);
-  });
-
-  it('caps sessionQueue at the pool size', () => {
+  it('caps sessionQueue at the available pool size when count exceeds it', () => {
+    // Math.min(Math.max(1, count), pool.length) — ensures no out-of-bounds queue
     const { result } = setup();
     act(() => { result.current.setCustomSessionCount(999); });
     act(() => { result.current.startSession(); });
-    // Queue cannot exceed available sentences count
     expect(result.current.sessionQueue.length).toBeLessThanOrEqual(
       result.current.availableSentences.length
     );
-  });
-
-  it('resets session stats to zero', () => {
-    const { result } = setup();
-    act(() => { result.current.startSession(); });
-    expect(result.current.sessionStats).toEqual({ correct: 0, total: 0 });
-  });
-
-  it('resets isSessionFinished to false', () => {
-    const { result } = setup();
-    act(() => { result.current.startSession(); });
-    expect(result.current.isSessionFinished).toBe(false);
   });
 });
 
 // ─── nextSessionSentence ──────────────────────────────────────────────────────
 
 describe('nextSessionSentence', () => {
-  it('advances to the next sentence in the queue', () => {
-    const { result } = setup();
-    act(() => {
-      result.current.setCustomSessionCount(2);
-      result.current.startSession();
-    });
-    const first = result.current.currentSentence;
-    act(() => { result.current.nextSessionSentence(); });
-    const second = result.current.currentSentence;
-    // The two sentences should be different (queue has at least 2)
-    expect(second?.id).not.toBe(first?.id);
-  });
-
-  it('sets isSessionFinished when last sentence is done', () => {
+  it('sets isSessionFinished when the last sentence in the queue is done', () => {
+    // Guard: nextIndex >= sessionQueue.length → setIsSessionFinished(true)
     const { result } = setup();
     act(() => { result.current.setCustomSessionCount(1); });
     act(() => { result.current.startSession(); });
     act(() => { result.current.nextSessionSentence(); });
     expect(result.current.isSessionFinished).toBe(true);
   });
-
-  it('sets currentSentence to null when session ends', () => {
-    const { result } = setup();
-    act(() => { result.current.setCustomSessionCount(1); });
-    act(() => { result.current.startSession(); });
-    act(() => { result.current.nextSessionSentence(); });
-    expect(result.current.currentSentence).toBeNull();
-  });
 });
 
-// ─── resetToHome ──────────────────────────────────────────────────────────────
+// ─── handleCheck double-count guard ──────────────────────────────────────────
 
-describe('resetToHome', () => {
-  it('resets mode to free', () => {
+describe('handleCheck', () => {
+  it('only updates session stats on the first check per sentence', () => {
+    // The guard `if (!validationResult)` in handleCheck ensures that calling
+    // Controleer multiple times on the same sentence does not inflate the score.
+    // A refactor removing that guard would cause double-counted stats.
     const { result } = setup();
+
+    // Start a session and move to the label step
     act(() => { result.current.startSession(); });
-    act(() => { result.current.resetToHome(); });
-    expect(result.current.mode).toBe('free');
-  });
+    act(() => { result.current.handleNextStep(); });
 
-  it('clears currentSentence', async () => {
-    const { result } = setup();
-    await act(async () => { await result.current.handleSentenceSelect(1); });
-    act(() => { result.current.resetToHome(); });
-    expect(result.current.currentSentence).toBeNull();
-  });
+    // First check: stats should be updated
+    act(() => { result.current.handleCheck(); });
+    const afterFirst = result.current.sessionStats.total;
+    expect(afterFirst).toBeGreaterThan(0);
 
-  it('clears sessionQueue', () => {
-    const { result } = setup();
-    act(() => { result.current.startSession(); });
-    act(() => { result.current.resetToHome(); });
-    expect(result.current.sessionQueue).toHaveLength(0);
-  });
-});
-
-// ─── bijvBep linking ──────────────────────────────────────────────────────────
-
-describe('bijvBep linking', () => {
-  it('startBijvBepLinking sets linkingBijvBepId', async () => {
-    const { result } = setup();
-    await act(async () => { await result.current.handleSentenceSelect(1); });
-    act(() => { result.current.startBijvBepLinking('chunk-1'); });
-    expect(result.current.linkingBijvBepId).toBe('chunk-1');
-  });
-
-  it('cancelBijvBepLinking clears linkingBijvBepId', async () => {
-    const { result } = setup();
-    await act(async () => { await result.current.handleSentenceSelect(1); });
-    act(() => { result.current.startBijvBepLinking('chunk-1'); });
-    act(() => { result.current.cancelBijvBepLinking(); });
-    expect(result.current.linkingBijvBepId).toBeNull();
-  });
-
-  it('completeBijvBepLink saves the link and clears linking mode', async () => {
-    const { result } = setup();
-    await act(async () => { await result.current.handleSentenceSelect(1); });
-    act(() => { result.current.startBijvBepLinking('chunk-1'); });
-    act(() => { result.current.completeBijvBepLink('token-5'); });
-    expect(result.current.bijvBepLinks['chunk-1']).toBe('token-5');
-    expect(result.current.linkingBijvBepId).toBeNull();
-  });
-
-  it('removeBijvBepLink removes the link', async () => {
-    const { result } = setup();
-    await act(async () => { await result.current.handleSentenceSelect(1); });
-    act(() => { result.current.startBijvBepLinking('chunk-1'); });
-    act(() => { result.current.completeBijvBepLink('token-5'); });
-    act(() => { result.current.removeBijvBepLink('chunk-1'); });
-    expect(result.current.bijvBepLinks['chunk-1']).toBeUndefined();
+    // Second check on the same sentence: stats must NOT change
+    act(() => { result.current.handleCheck(); });
+    expect(result.current.sessionStats.total).toBe(afterFirst);
   });
 });

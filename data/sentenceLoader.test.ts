@@ -39,26 +39,6 @@ import {
 // ─── loadSentencesByLevel ────────────────────────────────────────────────────
 
 describe('loadSentencesByLevel', () => {
-  it('loads level 1 sentences', async () => {
-    const result = await loadSentencesByLevel(1);
-    expect(result).toEqual(LEVEL_1_DATA);
-  });
-
-  it('loads level 2 sentences', async () => {
-    const result = await loadSentencesByLevel(2);
-    expect(result).toEqual(LEVEL_2_DATA);
-  });
-
-  it('loads level 3 sentences', async () => {
-    const result = await loadSentencesByLevel(3);
-    expect(result).toEqual(LEVEL_3_DATA);
-  });
-
-  it('loads level 4 sentences', async () => {
-    const result = await loadSentencesByLevel(4);
-    expect(result).toEqual(LEVEL_4_DATA);
-  });
-
   it('returns the same reference on repeated calls (cache hit)', async () => {
     const first = await loadSentencesByLevel(1);
     const second = await loadSentencesByLevel(1);
@@ -69,16 +49,6 @@ describe('loadSentencesByLevel', () => {
 // ─── loadAllSentences ────────────────────────────────────────────────────────
 
 describe('loadAllSentences', () => {
-  it('returns sentences from all four levels combined', async () => {
-    const all = await loadAllSentences();
-    expect(all).toEqual([
-      ...LEVEL_1_DATA,
-      ...LEVEL_2_DATA,
-      ...LEVEL_3_DATA,
-      ...LEVEL_4_DATA,
-    ]);
-  });
-
   it('returns the correct total count', async () => {
     const all = await loadAllSentences();
     const expected = LEVEL_1_DATA.length + LEVEL_2_DATA.length + LEVEL_3_DATA.length + LEVEL_4_DATA.length;
