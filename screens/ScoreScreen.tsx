@@ -6,6 +6,7 @@ import { ScoreRing } from '../components/ScoreRing';
 import { SentenceResultCard } from '../components/SentenceResultCard';
 import { ProgressChart } from '../components/ProgressChart';
 import { loadSessionHistory, getStreak } from '../sessionHistory';
+import { buildReport, encodeReport } from '../sessionReport';
 
 type ScoreScreenProps = Pick<TrainerState,
   | 'sessionStats'
@@ -315,11 +316,6 @@ export const ScoreScreen: React.FC<ScoreScreenProps> = ({
           )}
         </div>
 
-        <div className="flex justify-center gap-4">
-          <button onClick={resetToHome} className="px-8 py-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">Terug naar Home</button>
-          <button onClick={startSession} className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition-colors">Nog een keer</button>
-        </div>
-      </main>
         {/* === Section 5: Recommended action === */}
         <section className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 text-center">
           <p className="text-slate-600 dark:text-slate-300 text-sm mb-4">{recommendation.text}</p>
