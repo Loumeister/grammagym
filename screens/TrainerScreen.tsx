@@ -14,6 +14,7 @@ type TrainerScreenProps = Pick<TrainerState,
   | 'splitIndices' | 'chunkLabels' | 'subLabels' | 'bijzinFunctieLabels'
   | 'bijvBepLinks' | 'linkingBijvBepId'
   | 'validationResult' | 'showAnswerMode' | 'hintMessage'
+  | 'hasBeenScored' | 'allLabeled'
   | 'confirmAction' | 'setConfirmAction'
   | 'showHelp' | 'setShowHelp'
   | 'darkMode' | 'setDarkMode'
@@ -30,7 +31,7 @@ type TrainerScreenProps = Pick<TrainerState,
   | 'handleDropBijzinFunctie' | 'removeBijzinFunctieLabel'
   | 'startBijvBepLinking' | 'completeBijvBepLink' | 'cancelBijvBepLinking' | 'removeBijvBepLink'
   | 'handleHint' | 'handleCheck'
-  | 'handleShowAnswerRequest' | 'handleAbortRequest' | 'handleConfirmAction'
+  | 'handleShowAnswerRequest' | 'handleRetry' | 'handleAbortRequest' | 'handleConfirmAction'
   | 'nextSessionSentence'
 >;
 
@@ -39,6 +40,7 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
   splitIndices, chunkLabels, subLabels, bijzinFunctieLabels,
   bijvBepLinks, linkingBijvBepId,
   validationResult, showAnswerMode, hintMessage,
+  hasBeenScored, allLabeled,
   confirmAction, setConfirmAction,
   showHelp, setShowHelp,
   darkMode, setDarkMode,
@@ -55,7 +57,7 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
   handleDropBijzinFunctie, removeBijzinFunctieLabel,
   startBijvBepLinking, completeBijvBepLink, cancelBijvBepLinking, removeBijvBepLink,
   handleHint, handleCheck,
-  handleShowAnswerRequest, handleAbortRequest, handleConfirmAction,
+  handleShowAnswerRequest, handleRetry, handleAbortRequest, handleConfirmAction,
   nextSessionSentence,
 }) => {
   const [showZinsdeelHelp, setShowZinsdeelHelp] = useState(false);
@@ -129,7 +131,7 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
             </div>
           )}
 
-          {showAnswerMode && <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-200 px-4 py-2 rounded-lg text-center font-bold">Dit is het juiste antwoord. Bestudeer de verdeling en labels goed – zo leer je het voor de volgende keer.</div>}
+          {showAnswerMode && <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-200 px-4 py-2 rounded-lg text-center font-bold">Dit is het juiste antwoord. Bestudeer de verdeling en labels goed. Klik op &#8216;Opnieuw proberen&#8217; om het zelf te oefenen.</div>}
 
           {/* STEP 1: SPLITTING VIEW */}
           {step === 'split' && (
@@ -296,12 +298,18 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                       </button>
                       <button
                         onClick={handleCheck}
-                        disabled={userChunks.length === 0 || userChunks.some(c => !chunkLabels[c.tokens[0].id])}
+                        disabled={!allLabeled}
                         className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
                       >
-                        Check
+                        Controleer
                       </button>
                     </>
+                  )}
+
+                  {showAnswerMode && (
+                    <button onClick={handleRetry} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-sm transition-colors text-sm">
+                      Opnieuw proberen
+                    </button>
                   )}
 
                   {mode === 'session' && (validationResult || showAnswerMode) && (
@@ -310,9 +318,9 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                     </button>
                   )}
 
-                  {!showAnswerMode && !validationResult?.isPerfect && (
+                  {hasBeenScored && !showAnswerMode && !validationResult?.isPerfect && (
                     <button onClick={handleShowAnswerRequest} className="px-3 py-2 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded-lg font-medium text-sm transition-colors">
-                      Antwoord
+                      Toon antwoord
                     </button>
                   )}
                 </div>

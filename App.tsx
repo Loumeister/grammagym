@@ -118,6 +118,7 @@ export default function App() {
       splitIndices={trainer.splitIndices} chunkLabels={trainer.chunkLabels} subLabels={trainer.subLabels} bijzinFunctieLabels={trainer.bijzinFunctieLabels}
       bijvBepLinks={trainer.bijvBepLinks} linkingBijvBepId={trainer.linkingBijvBepId}
       validationResult={trainer.validationResult} showAnswerMode={trainer.showAnswerMode} hintMessage={trainer.hintMessage}
+      hasBeenScored={trainer.hasBeenScored} allLabeled={trainer.allLabeled}
       confirmAction={trainer.confirmAction} setConfirmAction={trainer.setConfirmAction}
       showHelp={trainer.showHelp} setShowHelp={trainer.setShowHelp}
       darkMode={trainer.darkMode} setDarkMode={trainer.setDarkMode}
@@ -134,7 +135,7 @@ export default function App() {
       handleDropBijzinFunctie={trainer.handleDropBijzinFunctie} removeBijzinFunctieLabel={trainer.removeBijzinFunctieLabel}
       startBijvBepLinking={trainer.startBijvBepLinking} completeBijvBepLink={trainer.completeBijvBepLink} cancelBijvBepLinking={trainer.cancelBijvBepLinking} removeBijvBepLink={trainer.removeBijvBepLink}
       handleHint={trainer.handleHint} handleCheck={trainer.handleCheck}
-      handleShowAnswerRequest={trainer.handleShowAnswerRequest} handleAbortRequest={trainer.handleAbortRequest} handleConfirmAction={trainer.handleConfirmAction}
+      handleShowAnswerRequest={trainer.handleShowAnswerRequest} handleRetry={trainer.handleRetry} handleAbortRequest={trainer.handleAbortRequest} handleConfirmAction={trainer.handleConfirmAction}
       nextSessionSentence={trainer.nextSessionSentence}
     />
   );
