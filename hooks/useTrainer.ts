@@ -67,6 +67,8 @@ export interface TrainerState {
   validationResult: ValidationResult | null;
   showAnswerMode: boolean;
   hintMessage: string | null;
+  hasBeenScored: boolean;
+  allLabeled: boolean;
   confirmAction: 'abort' | null;
   setConfirmAction: (action: 'abort' | null) => void;
 
@@ -111,6 +113,7 @@ export interface TrainerState {
   handleHint: () => void;
   handleCheck: () => void;
   handleShowAnswerRequest: () => void;
+  handleRetry: () => void;
   handleAbortRequest: () => void;
   handleConfirmAction: () => void;
   resetToHome: () => void;
@@ -169,6 +172,7 @@ export function useTrainer(): TrainerState {
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [showAnswerMode, setShowAnswerMode] = useState(false);
   const [hintMessage, setHintMessage] = useState<string | null>(null);
+  const [hasBeenScored, setHasBeenScored] = useState(false);
 
   // --- Sentence loading ---
   const { sentences: builtInSentences, isLoading: isLoadingSentences, error: sentenceLoadError, findSentenceById } = useSentences(selectedLevel);
@@ -255,6 +259,7 @@ export function useTrainer(): TrainerState {
     setValidationResult(null);
     setShowAnswerMode(false);
     setHintMessage(null);
+    setHasBeenScored(false);
     setConfirmAction(null);
   };
 
@@ -480,64 +485,67 @@ export function useTrainer(): TrainerState {
     const chunks = getUserChunks();
     const unlabeledChunks = chunks.filter(c => !chunkLabels[c.tokens[0].id]);
 
+    // Map from role key to the corresponding HINTS message
+    const roleHintMap: Partial<Record<RoleKey, string>> = {
+      pv: HINTS.MISSING_PV,
+      ow: HINTS.MISSING_OW,
+      wg: HINTS.MISSING_WG,
+      nwd: HINTS.MISSING_NG,
+      lv: HINTS.MISSING_LV,
+      mv: HINTS.MISSING_MV,
+      vv: HINTS.MISSING_VV,
+      bwb: HINTS.MISSING_BWB,
+      bijzin: HINTS.MISSING_BIJZIN,
+      bijst: HINTS.MISSING_BIJST,
+    };
+
+    // If all chunks are unlabeled, suggest finding PV first
     if (unlabeledChunks.length === chunks.length) {
       setHintMessage(HINTS.MISSING_PV);
       return;
     }
 
-    const usedRoles = Object.values(chunkLabels);
+    const usedRoles = Object.values(chunkLabels) as RoleKey[];
 
     if (unlabeledChunks.length > 0) {
+      // Priority: PV and OW first (foundational)
       if (!usedRoles.includes('pv')) { setHintMessage(HINTS.MISSING_PV); return; }
       if (!usedRoles.includes('ow')) { setHintMessage(HINTS.MISSING_OW); return; }
-    }
 
-    const actualRolesInSentence = new Set<RoleKey>();
-    currentSentence.tokens.forEach(t => {
-        actualRolesInSentence.add(t.role);
-    });
+      // Point at the next unlabeled chunk and give a role-specific strategy hint
+      const nextChunk = unlabeledChunks[0];
+      const words = nextChunk.tokens.map(t => t.text).join(' ');
+      const actualRole = nextChunk.tokens[0].role;
 
-    if (actualRolesInSentence.has('wg') && !usedRoles.includes('wg')) { setHintMessage(HINTS.MISSING_WG); return; }
-    if (actualRolesInSentence.has('nwd') && !usedRoles.includes('nwd')) { setHintMessage(HINTS.MISSING_NG); return; }
-    if (actualRolesInSentence.has('lv') && !usedRoles.includes('lv')) { setHintMessage(HINTS.MISSING_LV); return; }
-    if (actualRolesInSentence.has('mv') && !usedRoles.includes('mv')) { setHintMessage(HINTS.MISSING_MV); return; }
-    if (actualRolesInSentence.has('vv') && !usedRoles.includes('vv')) { setHintMessage(HINTS.MISSING_VV); return; }
-    if (actualRolesInSentence.has('bwb') && !usedRoles.includes('bwb')) { setHintMessage(HINTS.MISSING_BWB); return; }
-    if (actualRolesInSentence.has('bijzin') && !usedRoles.includes('bijzin')) { setHintMessage(HINTS.MISSING_BIJZIN); return; }
-    if (actualRolesInSentence.has('bijst') && !usedRoles.includes('bijst')) { setHintMessage(HINTS.MISSING_BIJST); return; }
-
-    // Remind about unlabeled chunks that haven't been caught by the role checks above
-    if (unlabeledChunks.length > 0) {
-      const words = unlabeledChunks[0].tokens.map(t => t.text).join(' ');
-      if (unlabeledChunks.length === 1) {
-        setHintMessage(`Tip: Het blokje "${words}" heeft nog geen label. Welk zinsdeel is dit?`);
+      const roleHint = roleHintMap[actualRole];
+      if (roleHint) {
+        setHintMessage(`Kijk naar het blokje "${words}". ${roleHint}`);
       } else {
-        setHintMessage(`Tip: Het blokje "${words}" en ${unlabeledChunks.length - 1} andere hebben nog geen label. Welk zinsdeel is "${words}"?`);
+        const roleDef = ROLES.find(r => r.key === actualRole);
+        if (roleDef) {
+          setHintMessage(`Het blokje "${words}" heeft nog geen label. ${HINTS.generic(roleDef.label)}`);
+        } else {
+          setHintMessage(`Het blokje "${words}" heeft nog geen label. Welk zinsdeel zou dit kunnen zijn?`);
+        }
       }
       return;
     }
 
-    // Check for missing bijzin function labels
-    const userChunks = getUserChunks();
-    for (const chunk of userChunks) {
+    // All chunks labeled – check for missing bijzin function labels
+    for (const chunk of chunks) {
       const firstToken = chunk.tokens[0];
       const userLabel = chunkLabels[firstToken.id];
       const functie = firstToken.bijzinFunctie;
       // Skip bijv_bep function requirement when includeBB is off
       if (functie === 'bijv_bep' && !includeBB) continue;
       if (userLabel === 'bijzin' && functie && !bijzinFunctieLabels[firstToken.id]) {
-        setHintMessage(HINTS.MISSING_BIJZIN_FUNCTIE);
+        const bijzinWords = chunk.tokens.map(t => t.text).join(' ');
+        setHintMessage(`Kijk naar de bijzin "${bijzinWords}". ${HINTS.MISSING_BIJZIN_FUNCTIE}`);
         return;
       }
     }
 
-    const remainingMissing = Array.from(actualRolesInSentence).find(r => !usedRoles.includes(r));
-    if (remainingMissing) {
-        const roleDef = ROLES.find(r => r.key === remainingMissing);
-        if (roleDef) { setHintMessage(HINTS.generic(roleDef.label)); }
-    } else {
-        setHintMessage(HINTS.ALL_PLACED);
-    }
+    setHintMessage(HINTS.ALL_PLACED);
   };
 
   const handleCheck = () => {
@@ -567,8 +575,9 @@ export function useTrainer(): TrainerState {
     const realChunkCount = countRealChunks(currentSentence.tokens);
 
     // Guard: only update stats and record usage on the FIRST check per sentence.
-    // Prevents double-counting when the student clicks Controleer multiple times.
-    if (!validationResult) {
+    // Uses hasBeenScored flag (not validationResult) to survive back-step / edit cycles.
+    if (!hasBeenScored) {
+      setHasBeenScored(true);
       if (mode === 'session') {
         const newTotal = sessionStats.total + realChunkCount;
         const newCorrect = sessionStats.correct + vResult.score;
@@ -661,7 +670,8 @@ export function useTrainer(): TrainerState {
     });
 
     // Score the student's current work before revealing the answer
-    if (!validationResult) {
+    if (!hasBeenScored) {
+      setHasBeenScored(true);
       const { result: vResult, mistakes: currentMistakes } = validateAnswer(
         currentSentence, splitIndices, chunkLabels, subLabels, includeBB,
         bijzinFunctieLabels, bijvBepLinks
@@ -702,6 +712,7 @@ export function useTrainer(): TrainerState {
         }
         return updated;
       });
+      recordShowAnswer(currentSentence.id);
     }
 
     setChunkLabels(correctChunkLabels);
@@ -711,6 +722,19 @@ export function useTrainer(): TrainerState {
     setLinkingBijvBepId(null);
     setShowAnswerMode(true);
     setValidationResult(null);
+  };
+
+  const handleRetry = () => {
+    logInteraction('retry', currentSentence?.id);
+    setChunkLabels({});
+    setSubLabels({});
+    setBijzinFunctieLabels({});
+    setBijvBepLinks({});
+    setLinkingBijvBepId(null);
+    setShowAnswerMode(false);
+    setValidationResult(null);
+    setHintMessage(null);
+    // hasBeenScored stays true – score is already locked in
   };
 
   const resetToHome = () => {
@@ -726,6 +750,19 @@ export function useTrainer(): TrainerState {
 
   const userChunks = getUserChunks();
   const availableSentences = getFilteredSentences();
+
+  // Compute whether ALL labels are placed (chunk labels + bijzin functions for bijzin chunks)
+  const allLabeled = userChunks.length > 0 &&
+    userChunks.every(c => {
+      const firstToken = c.tokens[0];
+      if (!chunkLabels[firstToken.id]) return false;
+      // If chunk is labeled bijzin and has a function, require function label too
+      if (chunkLabels[firstToken.id] === 'bijzin' && firstToken.bijzinFunctie) {
+        if (firstToken.bijzinFunctie === 'bijv_bep' && !includeBB) return true;
+        if (!bijzinFunctieLabels[firstToken.id]) return false;
+      }
+      return true;
+    });
 
   return {
     // Config
@@ -756,7 +793,8 @@ export function useTrainer(): TrainerState {
     splitIndices, chunkLabels, subLabels, bijzinFunctieLabels,
     bijvBepLinks, linkingBijvBepId,
     validationResult, showAnswerMode,
-    hintMessage, confirmAction, setConfirmAction,
+    hintMessage, hasBeenScored, allLabeled,
+    confirmAction, setConfirmAction,
 
     // Loading
     isLoadingSentences, sentenceLoadError,
@@ -780,7 +818,7 @@ export function useTrainer(): TrainerState {
     handleDropBijzinFunctie, removeBijzinFunctieLabel,
     startBijvBepLinking, completeBijvBepLink, cancelBijvBepLinking, removeBijvBepLink,
     handleHint, handleCheck,
-    handleShowAnswerRequest, handleAbortRequest,
+    handleShowAnswerRequest, handleRetry, handleAbortRequest,
     handleConfirmAction, resetToHome,
   };
 }

@@ -15,6 +15,7 @@ export type InteractionType =
   | 'check'
   | 'hint'
   | 'show_answer'
+  | 'retry'
   | 'session_finish'
   | 'abort'
   | 'error_split'
