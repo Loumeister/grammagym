@@ -67,8 +67,8 @@ export interface TrainerState {
   validationResult: ValidationResult | null;
   showAnswerMode: boolean;
   hintMessage: string | null;
-  confirmAction: 'answer' | 'abort' | null;
-  setConfirmAction: (action: 'answer' | 'abort' | null) => void;
+  confirmAction: 'abort' | null;
+  setConfirmAction: (action: 'abort' | null) => void;
 
   // UI
   showHelp: boolean;
@@ -154,7 +154,7 @@ export function useTrainer(): TrainerState {
   const [darkMode, setDarkMode] = useState(false);
   const [largeFont, setLargeFont] = useState(false);
   const [dyslexiaMode, setDyslexiaMode] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<'answer' | 'abort' | null>(null);
+  const [confirmAction, setConfirmAction] = useState<'abort' | null>(null);
 
   // Splitting State
   const [splitIndices, setSplitIndices] = useState<Set<number>>(new Set());
@@ -599,7 +599,7 @@ export function useTrainer(): TrainerState {
   };
 
   const handleShowAnswerRequest = () => {
-    setConfirmAction('answer');
+    executeShowAnswer();
   };
 
   const handleAbortRequest = () => {
@@ -611,9 +611,7 @@ export function useTrainer(): TrainerState {
   };
 
   const handleConfirmAction = () => {
-    if (confirmAction === 'answer') {
-        executeShowAnswer();
-    } else if (confirmAction === 'abort') {
+    if (confirmAction === 'abort') {
         resetToHome();
     }
     setConfirmAction(null);
@@ -662,24 +660,37 @@ export function useTrainer(): TrainerState {
       }
     });
 
+    // Score the student's current work before revealing the answer
     if (!validationResult) {
+      const { result: vResult, mistakes: currentMistakes } = validateAnswer(
+        currentSentence, splitIndices, chunkLabels, subLabels, includeBB,
+        bijzinFunctieLabels, bijvBepLinks
+      );
       const realChunkCount = countRealChunks(currentSentence.tokens);
       if (mode === 'session') {
-        setSessionStats(prev => ({ correct: prev.correct, total: prev.total + realChunkCount }));
-        // Record as a sentence result with 0 score (answer was shown without checking)
+        const newTotal = sessionStats.total + realChunkCount;
+        const newCorrect = sessionStats.correct + vResult.score;
+        setSessionStats({ correct: newCorrect, total: newTotal });
+        const newMistakeStats = { ...mistakeStats };
+        Object.entries(currentMistakes).forEach(([role, count]) => {
+          newMistakeStats[role] = (newMistakeStats[role] || 0) + count;
+        });
+        setMistakeStats(newMistakeStats);
         setSessionSentenceResults(prev => [...prev, {
           sentence: currentSentence,
-          score: 0,
+          score: vResult.score,
           total: realChunkCount,
-          chunkStatus: {},
-          chunkFeedback: {},
-          isPerfect: false,
-          mistakes: {},
+          chunkStatus: vResult.chunkStatus,
+          chunkFeedback: vResult.chunkFeedback,
+          isPerfect: vResult.isPerfect,
+          mistakes: currentMistakes,
           showAnswerUsed: true,
           userLabels: { ...chunkLabels },
           splitIndices: Array.from(splitIndices),
         }]);
       }
+      const splitErrorCount = Object.values(vResult.chunkStatus).filter(s => s === 'incorrect-split').length;
+      recordAttempt(currentSentence.id, vResult.isPerfect, currentMistakes, splitErrorCount);
       recordShowAnswer(currentSentence.id);
     } else if (mode === 'session') {
       // Answer was shown after checking - mark existing result as showAnswerUsed
