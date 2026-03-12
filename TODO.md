@@ -399,7 +399,7 @@ interface ComplexSentence extends Sentence {
 | Methode Blink | Spiekbriefje als hulpmiddel, functioneel inzetten van kennis | §2 |
 | Ebbinghaus (1885) | Vergeetcurve, spaced repetition | §21 |
 | Sweller (2011) | Cognitive Load Theory, split-attention effect | §0b, §1 |
-| Flavell (1979) | Metacognitie, zelfregulatie bij leren | §5 |
+| Flavell (1979) | Metacognitie en zelfregulatie bij leren | §5 |
 | Nassaji & Fotos (2011) | Focus-on-form, contrastieve analyse in taaldidactiek | §6 |
 
 ---
