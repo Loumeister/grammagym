@@ -1,6 +1,24 @@
 # Zinsontledingstrainer - Technische Documentatie
 
-Dit is de technische documentatie voor de Zinsontledingstrainer. Deze app is gebouwd met **React**, **TypeScript**, **Vite** en **Tailwind CSS**.
+Een interactieve browser-app die leerlingen (12-15 jaar, onderbouw havo/vwo) leert om Nederlandse zinnen te ontleden. Gebouwd met **React 18**, **TypeScript**, **Vite** en **Tailwind CSS**. Volledig client-side, geen backend nodig.
+
+## 📊 Projectstatus (maart 2025)
+
+| Onderdeel | Status | Details |
+|-----------|--------|---------|
+| **Kernfunctionaliteit** | ✅ Compleet | Tweestaps-ontleding (verdelen + benoemen), 13 rollen |
+| **Zinnen-database** | ✅ 145+ zinnen | 4 niveaus (Basis → Samengesteld) |
+| **Feedback** | ✅ Contextueel | FEEDBACK_MATRIX met rolspecifieke uitleg |
+| **Docentenmodus** | ✅ Werkend | Editor, URL-delen, importeren |
+| **Gamification** | ✅ Basis | Confetti, streaks, badges |
+| **Dark mode / Dyslexie** | ✅ Compleet | Class-toggle, groot lettertype |
+| **Testdekking** | ⚠️ Deels | 93 tests, 100% op `validation.ts`; 0% op hooks/screens |
+| **Toegankelijkheid** | ⚠️ Basis | Dark mode + dyslexie; toetsenbord/ARIA ontbreekt |
+| **Touch-ondersteuning** | ⚠️ Beperkt | Drag-and-drop only; tap-to-place gepland |
+| **Rollenladder** | 📋 Gepland | Adaptieve rol-introductie (zie TODO.md §1) |
+| **Werkwoordspelling** | 📋 Gepland | Module 2 (zie SPEC.md) |
+
+Zie `TODO.md` voor de volledige roadmap en `SPEC.md` voor de technische specificatie.
 
 ## 🛠️ Installatie & Development
 
