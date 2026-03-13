@@ -114,146 +114,90 @@ export const FEEDBACK_STRUCTURE = {
 // Matrix for Role Mismatch Feedback (Step 2)
 // Indexed as FEEDBACK_MATRIX[studentLabel][correctLabel]
 export const FEEDBACK_MATRIX: Record<string, Record<string, string>> = {
-  // Student zegt ONDERWERP, maar het is eigenlijk…
+  // ONDERWERP
   'ow': {
-    'pv': "Dit is een vervoegd werkwoord, geen onderwerp. Doe de tijdsproef: zet de zin in een andere tijd – welk woord verandert mee? Dat is de persoonsvorm.",
-    'lv': "Stel de vraag 'Wie of wat + PV?' – het antwoord daarop is het onderwerp. Dit zinsdeel beantwoordt juist de vraag 'Wie of wat + gezegde + OW?' en is dus het lijdend voorwerp.",
-    'mv': "Het onderwerp vind je met 'Wie of wat + PV?' Dit zinsdeel beantwoordt juist 'Aan/voor wie + gezegde + OW + LV?' – het is het meewerkend voorwerp.",
-    'bwb': "Dit zinsdeel geeft extra informatie (waar? wanneer? hoe?) en is een bijwoordelijke bepaling. Het onderwerp vind je met 'Wie of wat + PV?'",
-    'wg': "Dit zinsdeel drukt de handeling zelf uit (het gezegde); het is niet de uitvoerder ervan. Het onderwerp vind je met 'Wie of wat + PV?'",
-    'nwd': "Het werkwoord in deze zin is een koppelwerkwoord (zijn, worden, lijken…). Dit zinsdeel zegt iets over het onderwerp en is het naamwoordelijk gezegde.",
-    'vv': "Hoort het voorzetsel in dit zinsdeel vast bij het werkwoord? Dan is het een voorzetselvoorwerp. Het onderwerp vind je met 'Wie of wat + PV?'",
-    'bijzin': "Dit zinsdeel bevat een eigen onderwerp en persoonsvorm – het is een bijzin. Het onderwerp van de hoofdzin vind je met 'Wie of wat + PV?'",
-    'bijst': "Dit zinsdeel hernoemt een ander zinsdeel en staat vaak tussen komma's – het is een bijstelling, geen onderwerp.",
+    'pv': "Dit zinsdeel doet niets, maar 'doet' juist de persoonsvorm de handeling? Check: Wie of wat + persoonsvorm?",
+    'lv': "Ondergaat dit zinsdeel echt de handeling? Of voert het die uit? Check: Wie of wat + persoonsvorm?",
+    'mv': "Krijgt dit zinsdeel iets? Of doet het zelf iets? Stel de vraag: Wie of wat + persoonsvorm?",
+    'bwb': "Geeft dit echt plaats/tijd/manier aan? Of kun je antwoorden op: Wie of wat + persoonsvorm?"
   },
 
-  // Student zegt PERSOONSVORM, maar het is eigenlijk…
+  // PERSOONSVORM
   'pv': {
-    'wg': "Er zitten meerdere werkwoorden in het gezegde. De PV is alleen het werkwoord dat verandert bij tijdsverandering – de rest hoort bij het werkwoordelijk gezegde.",
-    'ow': "De persoonsvorm is altijd een vervoegd werkwoord. Dit zinsdeel is geen werkwoord: het is het antwoord op 'Wie of wat + PV?'",
-    'lv': "De persoonsvorm is een vervoegd werkwoord. Dit zinsdeel is geen werkwoord – het beantwoordt 'Wie of wat + gezegde + OW?'",
-    'bwb': "De persoonsvorm is een vervoegd werkwoord. Dit zinsdeel is geen werkwoord, maar geeft extra informatie (waar, wanneer, hoe).",
-    'nwd': "De persoonsvorm is het vervoegde werkwoord. Dit zinsdeel beschrijft een eigenschap van het onderwerp – het is het naamwoordelijk gezegde.",
-    'mv': "De persoonsvorm is een vervoegd werkwoord. Dit zinsdeel is geen werkwoord – het is de ontvanger van de handeling (aan/voor wie).",
-    'vv': "De persoonsvorm is een vervoegd werkwoord. Dit zinsdeel bevat een voorzetsel dat vast bij het werkwoord hoort: het is een voorzetselvoorwerp.",
+    'wg': "Je hebt het hele gezegde gepakt. Welk werkwoord verandert van tijd (tegenwoordige/verleden tijd)? Dat is de persoonsvorm.",
+    'ow': "Dit zinsdeel voert de handeling uit, maar is geen werkwoord. Zoek het werkwoord dat van tijd kan veranderen."
   },
 
-  // Student zegt WERKWOORDELIJK GEZEGDE, maar het is eigenlijk…
+  // WERKWOORDELIJK GEZEGDE
   'wg': {
-    'pv': "De PV is het ene werkwoord dat verandert als je de zin in een andere tijd zet. Het werkwoordelijk gezegde omvat alle werkwoorden samen. Welk specifiek woord verandert hier?",
-    'nwd': "Is het werkwoord in deze zin een koppelwerkwoord (zijn, worden, lijken, schijnen, blijven)? Dan is dit het naamwoordelijk gezegde, niet het werkwoordelijk gezegde.",
-    'lv': "Het gezegde bestaat uit werkwoorden. Dit zinsdeel is geen werkwoord – het beantwoordt de vraag 'Wie of wat + gezegde + OW?' en is het lijdend voorwerp.",
-    'bwb': "Het gezegde bestaat uit werkwoorden. Dit zinsdeel geeft extra informatie over hoe, waar of wanneer: het is een bijwoordelijke bepaling.",
-    'ow': "Dit zinsdeel voert de handeling uit – het is het onderwerp, niet de handeling zelf. Het onderwerp vind je met 'Wie of wat + PV?'",
-    'mv': "Dit zinsdeel is de ontvanger (aan/voor wie), niet het gezegde. Het meewerkend voorwerp vind je met 'Aan/voor wie + gezegde + OW + LV?'",
-    'vv': "Dit zinsdeel bevat een voorzetsel dat vast bij het werkwoord hoort: het is een voorzetselvoorwerp, geen deel van het gezegde.",
+    'pv': "Dit is maar één woord uit het hele gezegde. Welke andere werkwoorden horen er nog bij? Pak die er ook bij.",
+    'ng': "Staat hier een koppelwerkwoord (zijn, worden, blijven, lijken, schijnen…)? Dan heet het geheel Naamwoordelijk Gezegde.",
+    'lv': "Is dit een 'ding' of 'persoon' die iets ondergaat, of een werkwoordsvorm (bijv. voltooid deelwoord/infinitief) die bij het gezegde hoort?"
   },
 
-  // Student zegt NAAMWOORDELIJK GEZEGDE, maar het is eigenlijk…
-  'nwd': {
-    'wg': "Kijk naar het hoofdwerkwoord: is het een koppelwerkwoord (zijn, worden, lijken, schijnen)? Zo niet, dan is het een werkwoordelijk gezegde, geen naamwoordelijk gezegde.",
-    'lv': "Het naamwoordelijk gezegde beschrijft het onderwerp via een koppelwerkwoord. Dit zinsdeel ondergaat juist een handeling – het beantwoordt 'Wie of wat + gezegde + OW?'",
-    'bwb': "Het naamwoordelijk gezegde zegt iets over het onderwerp via een koppelwerkwoord. Dit zinsdeel geeft juist extra informatie over hoe, waar of wanneer.",
-    'ow': "Het naamwoordelijk gezegde beschrijft het onderwerp. Dit zinsdeel ís het onderwerp: het voert de handeling uit. Vraag: 'Wie of wat + PV?'",
-    'pv': "Het naamwoordelijk gezegde is geen werkwoord – het beschrijft een eigenschap. De persoonsvorm is het vervoegde werkwoord dat bij tijdsverandering meeverandert.",
-    'mv': "Dit zinsdeel is de ontvanger van de handeling, geen eigenschap van het onderwerp. Vraag: 'Aan/voor wie + gezegde + OW + LV?'",
-    'vv': "Hoort het voorzetsel vast bij het werkwoord? Dan is dit een voorzetselvoorwerp, geen naamwoordelijk gezegde.",
+  // NAAMWOORDELIJK GEZEGDE
+  'ng': {
+    'wg': "Is het werkwoord hier een koppelwerkwoord? Zo niet, dan is het gewoon een Werkwoordelijk Gezegde.",
+    'lv': "Zegt dit zinsdeel een eigenschap/toestand van het onderwerp? Dan is het geen LV maar deel van het Naamwoordelijk Gezegde.",
+    'bwb': "Dit zegt iets over de toestand of eigenschap van het onderwerp (gekoppeld door het werkwoord), niet over de manier waarop (hoe)."
   },
 
-  // Student zegt LIJDEND VOORWERP, maar het is eigenlijk…
+  // LIJDEND VOORWERP
   'lv': {
-    'ow': "Stel de vraag 'Wie of wat + PV?' – het antwoord is het onderwerp. Dit zinsdeel voert de handeling uit, het ondergaat die niet.",
-    'vv': "Let op het voorzetsel: hoort het vast bij het werkwoord (bijv. 'wachten op')? Dan is dit een voorzetselvoorwerp, geen lijdend voorwerp.",
-    'bwb': "Dit zinsdeel geeft extra informatie over waar, wanneer of hoe – het is een bijwoordelijke bepaling. Het LV beantwoordt 'Wie of wat + gezegde + OW?'",
-    'mv': "Dit zinsdeel is de ontvanger (aan/voor wie), niet degene die de handeling ondergaat. Het LV beantwoordt 'Wie of wat + gezegde + OW?', het MV 'Aan/voor wie?'",
-    'nwd': "Is het werkwoord een koppelwerkwoord (zijn, worden, lijken)? Dan beschrijft dit zinsdeel een eigenschap van het onderwerp: het is het naamwoordelijk gezegde.",
-    'bijst': "Dit zinsdeel hernoemt een eerder zinsdeel, vaak tussen komma's – het is een bijstelling. Het LV beantwoordt 'Wie of wat + gezegde + OW?'",
-    'pv': "De persoonsvorm is een vervoegd werkwoord. Dit zinsdeel is geen werkwoord.",
-    'wg': "Het gezegde bestaat uit werkwoorden. Dit zinsdeel bevat geen werkwoord – het beantwoordt 'Wie of wat + gezegde + OW?'",
-    'bijzin': "Dit zinsdeel bevat een eigen onderwerp en persoonsvorm – het is een bijzin, geen lijdend voorwerp. Kijk of er een voegwoord aan het begin staat.",
+    'ow': "Voert dit zinsdeel de actie uit of ondergaat het die? Stel eerst de vraag: Wie of wat + persoonsvorm?",
+    'vv': "Begint dit zinsdeel met een vast voorzetsel bij het werkwoord (denken aan, wachten op)? Dan hoort het bij een voorzetselvoorwerp.",
+    'bwb': "Krijg je hier antwoord op 'wat wordt er gedaan'? Of alleen 'waar/wanneer/waarom'? Alleen dan is het een BWB.",
+    'mv': "Wie krijgt hier iets? Kun je 'aan' of 'voor' erbij denken? Dan is dat zinsdeel het Meewerkend Voorwerp, niet het LV."
   },
 
-  // Student zegt MEEWERKEND VOORWERP, maar het is eigenlijk…
+  // MEEWERKEND VOORWERP
   'mv': {
-    'ow': "Het onderwerp voert de handeling uit: 'Wie of wat + PV?' Dit zinsdeel is niet de ontvanger.",
-    'lv': "Het lijdend voorwerp ondergaat de handeling: 'Wie of wat + gezegde + OW?' Het MV beantwoordt juist 'Aan/voor wie?'",
-    'vv': "Hoort het voorzetsel vast bij het werkwoord (bijv. 'denken aan')? Dan is het een voorzetselvoorwerp. Bij het MV kun je 'aan' of 'voor' ervoor zetten.",
-    'bwb': "Dit zinsdeel geeft informatie over hoe, waar of wanneer – het is een bijwoordelijke bepaling, geen meewerkend voorwerp.",
-    'pv': "De persoonsvorm is een vervoegd werkwoord. Dit zinsdeel is geen werkwoord.",
-    'wg': "Dit zinsdeel bevat werkwoorden die samen het gezegde vormen, geen meewerkend voorwerp.",
-    'nwd': "Is het werkwoord een koppelwerkwoord? Dan beschrijft dit het onderwerp – het is het naamwoordelijk gezegde.",
-    'bijzin': "Dit zinsdeel bevat een eigen onderwerp en persoonsvorm – het is een bijzin.",
+    'ow': "Doet dit zinsdeel zelf iets, of krijgt het juist iets? Probeer: Aan/voor wie + gezegde + onderwerp?",
+    'lv': "Haal je de vragen door elkaar? LV: Wie/wat + gezegde + onderwerp. MV: Aan/voor wie + gezegde + onderwerp.",
+    'vv': "Als je 'aan' of 'voor' kunt weglaten (of erbij denken), is het Meewerkend Voorwerp. Bij een VV zit het voorzetsel 'vast'."
   },
 
-  // Student zegt VOORZETSELVOORWERP, maar het is eigenlijk…
+  // VOORZETSELVOORWERP
   'vv': {
-    'bwb': "Hoort het voorzetsel echt vast bij het werkwoord? Als het los extra informatie geeft (waar, wanneer), is het een bijwoordelijke bepaling.",
-    'lv': "Bij een voorzetselvoorwerp hoort het voorzetsel vast bij het werkwoord. Is dat hier zo? Kun je vragen: 'Wie of wat + gezegde + OW?' Dan is het het LV.",
-    'mv': "Bij het MV kun je 'aan' of 'voor' ervoor zetten. Bij een VZV is het voorzetsel niet verwisselbaar: het hoort vast bij het werkwoord.",
-    'ow': "Dit zinsdeel voert de handeling uit: vraag 'Wie of wat + PV?' Het is geen voorzetselvoorwerp.",
-    'pv': "De persoonsvorm is een vervoegd werkwoord. Dit zinsdeel is geen werkwoord.",
-    'wg': "Dit zinsdeel bevat werkwoorden van het gezegde, geen voorzetselvoorwerp.",
-    'nwd': "Dit is het naamwoordelijk gezegde (eigenschap van het onderwerp via een koppelwerkwoord), geen voorzetselvoorwerp.",
-    'bijzin': "Dit zinsdeel bevat een eigen onderwerp en persoonsvorm – het is een bijzin.",
+    'bwb': "Kijk of je het voorzetsel nodig hebt voor de betekenis van het werkwoord (wachten op, dromen van). Zo ja, dan is het een VV.",
+    'lv': "Een LV begint bijna nooit met een vast voorzetsel. Hoort dit voorzetsel echt bij het werkwoord? Dan is het een VV.",
+    'mv': "Bij een VV hoort het voorzetsel vast bij het werkwoord. Bij een MV kun je vaak 'aan/voor' denken in plaats van het voorzetsel."
   },
 
-  // Student zegt BIJWOORDELIJKE BEPALING, maar het is eigenlijk…
+  // BIJWOORDELIJKE BEPALING
   'bwb': {
-    'vv': "Hoort het voorzetsel vast bij het werkwoord (bijv. 'wachten op', 'denken aan')? Dan is het een voorzetselvoorwerp, geen bijwoordelijke bepaling.",
-    'lv': "Dit zinsdeel ondergaat de handeling – vraag: 'Wie of wat + gezegde + OW?' Een bijwoordelijke bepaling beantwoordt 'Hoe? Waar? Wanneer?'",
-    'ow': "Dit zinsdeel voert de handeling uit: 'Wie of wat + PV?' Een bijwoordelijke bepaling beantwoordt juist 'Hoe? Waar? Wanneer?'",
-    'bijzin': "Dit zinsdeel bevat een eigen onderwerp en persoonsvorm – het is een bijzin. Kijk of er een voegwoord aan het begin staat.",
-    'mv': "Dit zinsdeel is de ontvanger van de handeling: 'Aan/voor wie?' Een bijwoordelijke bepaling beantwoordt 'Hoe? Waar? Wanneer?'",
-    'nwd': "Dit zinsdeel zegt iets over de toestand van het onderwerp via een koppelwerkwoord – het is het naamwoordelijk gezegde.",
-    'bijst': "Dit zinsdeel hernoemt een ander zinsdeel, vaak tussen komma's – het is een bijstelling, geen bijwoordelijke bepaling.",
-    'pv': "De persoonsvorm is een vervoegd werkwoord. Dit zinsdeel is geen werkwoord.",
-    'wg': "Dit zinsdeel bevat werkwoorden die samen het gezegde vormen, geen bijwoordelijke bepaling.",
+    'vv': "Hoort dit voorzetsel vast bij het werkwoord (figuurlijk)? Of geeft het gewoon een plaats of tijd aan (letterlijk)?",
+    'lv': "Wordt hier echt iets gedaan met dit zinsdeel (wie/wat)? Of krijg je extra info over tijd, plaats, reden of manier?",
+    'ow': "Kun je op dit zinsdeel antwoorden met Wie of wat + persoonsvorm? Zo niet, dan geeft het waarschijnlijk alleen extra informatie: BWB.",
+    'bijzin': "Dit zinsdeel heeft een eigen persoonsvorm. Dan is het een bijzin. Gebruik in deze oefening het blokje 'Bijzin'."
   },
 
-  // Student zegt BIJSTELLING, maar het is eigenlijk…
+  // BIJSTELLING
   'bijst': {
-    'bijv_bep': "Een bijvoeglijke bepaling voegt een eigenschap toe aan één woord (bijv. 'de grote hond'). Een bijstelling hernoemt een heel zinsdeel, vaak tussen komma's.",
-    'ow': "Dit zinsdeel voert de handeling uit: 'Wie of wat + PV?' Het is geen bijstelling.",
-    'lv': "Dit zinsdeel ondergaat de handeling: 'Wie of wat + gezegde + OW?' Het is geen bijstelling.",
-    'bwb': "Dit zinsdeel geeft informatie over hoe, waar of wanneer – het is een bijwoordelijke bepaling, geen bijstelling.",
-    'pv': "De persoonsvorm is een vervoegd werkwoord, geen bijstelling.",
-    'mv': "Dit zinsdeel is de ontvanger (aan/voor wie) – het is het meewerkend voorwerp, geen bijstelling.",
-    'vv': "Hoort het voorzetsel vast bij het werkwoord? Dan is het een voorzetselvoorwerp, geen bijstelling.",
-    'bijzin': "Dit zinsdeel bevat een eigen onderwerp en persoonsvorm – het is een bijzin, geen bijstelling.",
+    'bijv_bep': "Dit staat tussen komma's en is een andere naam voor het zinsdeel ervoor. Dat noemen we een bijstelling.",
+    'ow': "Deze woorden geven een extra naam/uitleg bij het onderwerp en kunnen ertussenuit zonder dat de zin kapot gaat. Dat is een bijstelling.",
+    'lv': "Kun je deze woorden weglaten en blijft de zin kloppen? Dan is het geen LV maar een bijstelling bij een ander zinsdeel.",
+    'bwb': "Staat dit los van de hoofdzin en is het eigenlijk een andere naam/omschrijving? Dan is het geen BWB maar een bijstelling."
   },
 
-  // Student zegt BIJZIN, maar het is eigenlijk…
+  // BIJZIN
   'bijzin': {
-    'bwb': "Een bijzin heeft een eigen onderwerp en persoonsvorm. Bevat dit zinsdeel die? Zo niet, dan geeft het extra informatie (hoe, waar, wanneer) en is het een bijwoordelijke bepaling.",
-    'ow': "Een bijzin bevat een eigen onderwerp en persoonsvorm. Bevat dit zinsdeel die? Zo niet, dan voert het de handeling uit en is het het onderwerp.",
-    'lv': "Een bijzin bevat een eigen onderwerp en persoonsvorm. Bevat dit zinsdeel die? Zo niet, dan ondergaat het de handeling en is het het lijdend voorwerp.",
-    'mv': "Een bijzin bevat een eigen onderwerp en persoonsvorm. Bevat dit zinsdeel die? Zo niet, dan is het de ontvanger en is het het meewerkend voorwerp.",
-    'vv': "Een bijzin bevat een eigen onderwerp en persoonsvorm. Bevat dit zinsdeel die? Zo niet, hoort het voorzetsel vast bij het werkwoord? Dan is het een voorzetselvoorwerp.",
-    'pv': "De persoonsvorm is een vervoegd werkwoord. Dit zinsdeel is geen bijzin.",
-    'wg': "Dit zinsdeel bevat werkwoorden van het gezegde, geen bijzin.",
+    'bwb': "Hoewel deze bijzin functioneert als een BWB, noemen we het in deze oefening een 'Bijzin'.",
+    'ow': "Deze hele zin functioneert als onderwerp, maar noem het hier een 'Bijzin'.",
+    'lv': "Deze hele zin functioneert als lijdend voorwerp, maar noem het hier een 'Bijzin'."
   },
 
-  // Student zegt ONDERSCHIKKEND VOEGWOORD, maar het is eigenlijk…
+  // ONDERSCHIKKEND VOEGWOORD
   'vw_onder': {
-    'vw_neven': "Een onderschikkend voegwoord leidt een bijzin in (omdat, dat, als, toen, wanneer). Een nevenschikkend voegwoord verbindt twee gelijkwaardige zinnen (en, maar, want, of, dus).",
-    'bwb': "Een onderschikkend voegwoord leidt een bijzin in. Dit zinsdeel geeft juist extra informatie (hoe, waar, wanneer) en is een bijwoordelijke bepaling.",
+    'vw_neven': "Dit is een onderschikkend voegwoord, want het leidt een bijzin in.",
+    'bwb': "Dit ene woord hoort bij de structuur van de zin, niet als losse tijd/plaatsbepaling. Het leidt een bijzin in: onderschikkend voegwoord."
   },
 
-  // Student zegt NEVENSCHIKKEND VOEGWOORD, maar het is eigenlijk…
+  // NEVENSCHIKKEND VOEGWOORD
   'vw_neven': {
-    'vw_onder': "Een nevenschikkend voegwoord verbindt gelijkwaardige zinnen (en, maar, want, of, dus). Een onderschikkend voegwoord leidt juist een bijzin in (omdat, dat, als, toen).",
-    'bwb': "Een voegwoord verbindt zinnen. Dit zinsdeel geeft extra informatie over hoe, waar of wanneer – het is een bijwoordelijke bepaling.",
-  },
-};
-
-export const FEEDBACK_SWAP = {
-  BIJZIN_HAS_FUNCTIE: (functieName: string) =>
-    `Goed gezien dat dit ${functieName} is! Maar omdat het een bijzin is (met eigen onderwerp en PV), gebruik je eerst 'Bijzin' als hoofdlabel. Sleep daarna '${functieName}' naar de functierij eronder.`,
-};
-
-export const FEEDBACK_BIJZIN_FUNCTIE = {
-  MISSING: "Goed, je hebt de bijzin herkend! Welke rol speelt deze bijzin in de hoofdzin? Bijv. lijdend voorwerp, bijwoordelijke bepaling… Sleep het juiste label naar de functierij.",
-  WRONG: (expected: string) => `De bijzin is juist! Maar de functie klopt nog niet. Welke vraag beantwoordt deze bijzin in de hoofdzin? Het juiste antwoord is: ${expected}.`,
+    'vw_onder': "Dit is een nevenschikkend voegwoord (zoals 'en', 'maar', 'want'). Het verbindt twee hoofdzinnen.",
+    'bwb': "Dit woord verbindt twee zinnen, het geeft niet alleen tijd of plaats aan. Kijk of het twee hoofdzinnen aan elkaar knoopt: dan is het een nevenschikkend voegwoord."
+  }
 };
 
 export const HINTS = {
