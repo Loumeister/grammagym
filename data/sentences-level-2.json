@@ -128,19 +128,19 @@
       {
         "id": "s8t5",
         "text": "een",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s8t6",
         "text": "koppige",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s8t7"
       },
       {
         "id": "s8t7",
         "text": "man.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -163,21 +163,21 @@
       {
         "id": "s10t3",
         "text": "een",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s10t5"
       },
       {
         "id": "s10t4",
         "text": "beetje",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s10t5"
       },
       {
         "id": "s10t5",
         "text": "teleurgesteld.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -452,7 +452,7 @@
       {
         "id": "s19t5",
         "text": "vijftig.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -600,21 +600,21 @@
       {
         "id": "s26t7",
         "text": "een",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s26t9"
       },
       {
         "id": "s26t8",
         "text": "stuk",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s26t9"
       },
       {
         "id": "s26t9",
         "text": "groter.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -789,7 +789,7 @@
       {
         "id": "s33t4",
         "text": "afhankelijk",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s33t5",
@@ -944,29 +944,29 @@
       {
         "id": "s37t8",
         "text": "aanzienlijk",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s37t9"
       },
       {
         "id": "s37t9",
         "text": "effectiever",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s37t10",
         "text": "dan",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s37t11",
         "text": "de",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s37t12",
         "text": "vorige.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -1316,14 +1316,14 @@
       {
         "id": "s49t8",
         "text": "iets",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s49t9"
       },
       {
         "id": "s49t9",
         "text": "strenger",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s49t10",
@@ -1432,14 +1432,14 @@
       {
         "id": "s55t7",
         "text": "volledig",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s55t8"
       },
       {
         "id": "s55t8",
         "text": "gebroken.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -1477,19 +1477,19 @@
       {
         "id": "s57t6",
         "text": "een",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s57t7",
         "text": "moeilijke",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s57t8"
       },
       {
         "id": "s57t8",
         "text": "klus.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -1806,7 +1806,7 @@
       {
         "id": "s63t10",
         "text": "onhoudbaar.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -1839,19 +1839,19 @@
       {
         "id": "s64t5",
         "text": "een",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s64t6",
         "text": "groot",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s64t7"
       },
       {
         "id": "s64t7",
         "text": "succes.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -1967,7 +1967,7 @@
       {
         "id": "s67t10",
         "text": "helder.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -2127,29 +2127,29 @@
       {
         "id": "s70t5",
         "text": "veel",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s70t6"
       },
       {
         "id": "s70t6",
         "text": "efficiënter",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s70t7",
         "text": "dan",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s70t8",
         "text": "het",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s70t9",
         "text": "oude.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -2271,24 +2271,24 @@
       {
         "id": "s74t11",
         "text": "aanzienlijk",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s74t12"
       },
       {
         "id": "s74t12",
         "text": "slechter",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s74t13",
         "text": "dan",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s74t14",
         "text": "verwacht.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -2666,7 +2666,7 @@
       {
         "id": "s81t12",
         "text": "verhard.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -2807,14 +2807,14 @@
       {
         "id": "s83t10",
         "text": "onvoldoende",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s83t11"
       },
       {
         "id": "s83t11",
         "text": "doordacht.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -2849,31 +2849,31 @@
       {
         "id": "s86t5",
         "text": "een",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s86t6",
         "text": "strenge",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s86t9"
       },
       {
         "id": "s86t7",
         "text": "maar",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s86t8",
         "text": "rechtvaardige",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s86t9"
       },
       {
         "id": "s86t9",
         "text": "docent.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -2916,19 +2916,19 @@
       {
         "id": "s87t7",
         "text": "een",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s87t8",
         "text": "moderne",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s87t9"
       },
       {
         "id": "s87t9",
         "text": "ontmoetingsplek.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -2988,14 +2988,14 @@
       {
         "id": "s88t10",
         "text": "behoorlijk",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s88t11"
       },
       {
         "id": "s88t11",
         "text": "gespannen.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -3035,14 +3035,14 @@
       {
         "id": "s89t6",
         "text": "nogal",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s89t7"
       },
       {
         "id": "s89t7",
         "text": "onduidelijk.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -3094,12 +3094,12 @@
       {
         "id": "s90t8",
         "text": "te",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s90t9",
         "text": "ingewikkeld.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -3139,19 +3139,19 @@
       {
         "id": "s91t6",
         "text": "een",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s91t7",
         "text": "echte",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s91t8"
       },
       {
         "id": "s91t8",
         "text": "aanrader.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -3200,14 +3200,14 @@
       {
         "id": "s92t7",
         "text": "verrassend",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s92t8"
       },
       {
         "id": "s92t8",
         "text": "positief.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -3247,26 +3247,26 @@
       {
         "id": "s93t6",
         "text": "voorzitter",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s93t7",
         "text": "van",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s93t6"
       },
       {
         "id": "s93t8",
         "text": "de",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s93t6"
       },
       {
         "id": "s93t9",
         "text": "vereniging.",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s93t6"
       }
@@ -3337,12 +3337,12 @@
       {
         "id": "s94t11",
         "text": "steeds",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s94t12",
         "text": "gezelliger.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -3389,19 +3389,19 @@
       {
         "id": "s95t7",
         "text": "een",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s95t8",
         "text": "grote",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s95t9"
       },
       {
         "id": "s95t9",
         "text": "uitdaging.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -3465,14 +3465,14 @@
       {
         "id": "s97t10",
         "text": "erg",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s97t11"
       },
       {
         "id": "s97t11",
         "text": "somber.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -3517,14 +3517,14 @@
       {
         "id": "s98t7",
         "text": "bijzonder",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s98t8"
       },
       {
         "id": "s98t8",
         "text": "kwetsend.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },

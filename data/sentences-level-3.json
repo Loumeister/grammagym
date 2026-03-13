@@ -100,7 +100,7 @@
       {
         "id": "s14t7",
         "text": "woedend.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -576,14 +576,14 @@
       {
         "id": "s41t10",
         "text": "heel",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s41t11"
       },
       {
         "id": "s41t11",
         "text": "tevreden.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -988,21 +988,21 @@
       {
         "id": "s78t11",
         "text": "politiek",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s78t13"
       },
       {
         "id": "s78t12",
         "text": "zeer",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s78t13"
       },
       {
         "id": "s78t13",
         "text": "kwetsbaar.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -1049,26 +1049,26 @@
       {
         "id": "s96t7",
         "text": "het",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "s96t8",
         "text": "meest",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s96t10"
       },
       {
         "id": "s96t9",
         "text": "realistische",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "s96t10"
       },
       {
         "id": "s96t10",
         "text": "plan.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -1149,7 +1149,7 @@
       {
         "id": "s103t4",
         "text": "stil.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },

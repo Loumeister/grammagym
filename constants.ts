@@ -62,8 +62,8 @@ export const ROLES: RoleDefinition[] = [
     borderColorClass: 'border-rose-300 dark:border-rose-600' 
   },
   { 
-    key: 'nwd', 
-    label: 'Naamwoordelijk Gezegde', 
+    key: 'ng',
+    label: 'Naamwoordelijk Gezegde',
     shortLabel: 'NG', 
     colorClass: 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-100', 
     borderColorClass: 'border-yellow-200 dark:border-yellow-600' 
@@ -198,6 +198,16 @@ export const FEEDBACK_MATRIX: Record<string, Record<string, string>> = {
     'vw_onder': "Dit is een nevenschikkend voegwoord (zoals 'en', 'maar', 'want'). Het verbindt twee hoofdzinnen.",
     'bwb': "Dit woord verbindt twee zinnen, het geeft niet alleen tijd of plaats aan. Kijk of het twee hoofdzinnen aan elkaar knoopt: dan is het een nevenschikkend voegwoord."
   }
+};
+
+export const FEEDBACK_SWAP = {
+  BIJZIN_HAS_FUNCTIE: (functieName: string) =>
+    `Goed gezien dat dit ${functieName} is! Maar omdat het een bijzin is (met eigen onderwerp en PV), gebruik je eerst 'Bijzin' als hoofdlabel. Sleep daarna '${functieName}' naar de functierij eronder.`,
+};
+
+export const FEEDBACK_BIJZIN_FUNCTIE = {
+  MISSING: "Goed, je hebt de bijzin herkend! Welke rol speelt deze bijzin in de hoofdzin? Bijv. lijdend voorwerp, bijwoordelijke bepaling… Sleep het juiste label naar de functierij.",
+  WRONG: (expected: string) => `De bijzin is juist! Maar de functie klopt nog niet. Welke vraag beantwoordt deze bijzin in de hoofdzin? Het juiste antwoord is: ${expected}.`,
 };
 
 export const HINTS = {

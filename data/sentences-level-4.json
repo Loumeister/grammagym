@@ -148,17 +148,17 @@
       {
         "id": "c3t3",
         "text": "in",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "c3t4",
         "text": "de",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "c3t5",
         "text": "war,",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "c3t6",
@@ -240,7 +240,7 @@
       {
         "id": "c4t8",
         "text": "piloot,",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "c4t9",
@@ -302,14 +302,14 @@
       {
         "id": "c5t4",
         "text": "zeer",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "c5t5"
       },
       {
         "id": "c5t5",
         "text": "goedgelovig,",
-        "role": "nwd"
+        "role": "ng"
       },
       {
         "id": "c5t6",
@@ -727,14 +727,14 @@
       {
         "id": "c211t7",
         "text": "mijn",
-        "role": "nwd",
+        "role": "ng",
         "subRole": "bijv_bep",
         "bijvBepTarget": "c211t8"
       },
       {
         "id": "c211t8",
         "text": "vader.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   },
@@ -785,7 +785,7 @@
       {
         "id": "c212t8",
         "text": "duur.",
-        "role": "nwd"
+        "role": "ng"
       }
     ]
   }

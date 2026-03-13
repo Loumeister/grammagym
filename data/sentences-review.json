@@ -13,8 +13,8 @@
       { "id": "s49t5", "text": "de", "role": "bwb" },
       { "id": "s49t6", "text": "laatste", "role": "bwb" },
       { "id": "s49t7", "text": "tijd", "role": "bwb" },
-      { "id": "s49t8", "text": "iets", "role": "nwd", "subRole": "bijv_bep" },
-      { "id": "s49t9", "text": "strenger", "role": "nwd" },
+      { "id": "s49t8", "text": "iets", "role": "ng", "subRole": "bijv_bep" },
+      { "id": "s49t9", "text": "strenger", "role": "ng" },
       {
         "_issue": "Huidige label: BWB (newChunk). In zinnen 37/70/74 is 'dan...' onderdeel van NWD. Welke analyse is correct?",
         "id": "s49t10",

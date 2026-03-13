@@ -359,7 +359,7 @@ export const SentenceEditorScreen: React.FC<SentenceEditorScreenProps> = ({ onBa
     if (predicateType === 'WG' && !roles.includes('wg')) {
       errors.push('Bij WG-zinnen: geen Werkwoordelijk Gezegde (WG) benoemd.');
     }
-    if (predicateType === 'NG' && !roles.includes('nwd')) {
+    if (predicateType === 'NG' && !roles.includes('ng')) {
       errors.push('Bij NG-zinnen: geen Naamwoordelijk Gezegde (NG) benoemd.');
     }
 

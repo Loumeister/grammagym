@@ -41,7 +41,7 @@ const SENTENCES: Sentence[] = [
       { id: '3-t1', text: 'De', role: 'ow' },
       { id: '3-t2', text: 'kat', role: 'ow' },
       { id: '3-t3', text: 'is', role: 'pv' },
-      { id: '3-t4', text: 'ziek', role: 'nwd' },
+      { id: '3-t4', text: 'ziek', role: 'ng' },
     ],
   },
 
